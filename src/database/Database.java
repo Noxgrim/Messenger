@@ -70,7 +70,7 @@ public class Database implements AutoCloseable {
     check_connection();
   }
   
-  public Database(boolean createTables) { //TODO finish this shit
+  public Database(boolean createTables) { //TODO finish this
     assert createTables(conn);
   }
   
