@@ -1,0 +1,12 @@
+#30-Jan-2015 14:32:13
+gui-mode=false
+msg-len-limit=4098
+own-nick=MissingNo
+port=1337
+nick-len-limit=64
+session-key-len=16
+char-set=DEFAULT
+connection-timeout=1000
+header-len-limit=256
+print-exceptions=false
+db-location=messenger.sqlite
