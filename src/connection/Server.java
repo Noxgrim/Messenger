@@ -91,13 +91,10 @@ public class Server implements Runnable, AutoCloseable {
 	 */
 	@Override
 	public void close() throws IOException {
-		try {
-			if (!serverSock.isClosed())
-				serverSock.close();
-		} catch (IOException e) {
-			Core.getInstance().getUserInterface()
-					.printError("[Server] Couldn't stop internal server!", e);
-		}
+		
+		if (!serverSock.isClosed())
+			serverSock.close();
+	
 	}
 
 	// private class SocketThread implements Runnable {
