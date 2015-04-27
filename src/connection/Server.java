@@ -29,14 +29,6 @@ public class Server implements Runnable, AutoCloseable {
 
 	@Override
 	public void run() {
-		// Register a shutdown hook. (See Wikipedia)
-
-		Runtime.getRuntime().addShutdownHook(new Thread() {
-			@Override
-			public void run() {
-
-			}
-		});
 
 		while (true) {
 			if (serverSock == null || parent == null || !serverSock.isBound())
