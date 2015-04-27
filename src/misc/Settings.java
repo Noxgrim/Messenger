@@ -28,17 +28,21 @@ import exceptions.FormatException;
  * <br>
  * 
  * A Settings object contains the following values: <br>
- * - the delimiter (final)<br>
- * - the message length limit<br>
- * - the header length limit<br>
- * - the nickname length limit<br>
- * - the connection timeout<br>
- * - the session key length<br>
- * - the public and private key<br>
- * - the active UI<br>
- * - the 'debug mode'-boolean<br>
- * - the user's nickname<br>
- * - the 'print exceptions'-boolean
+ * <ul>
+ * <li>its save location
+ * <li>the save location of the database
+ * <li>the delimiter (final)<br>
+ * <li>the message length limit<br>
+ * <li>the header length limit<br>
+ * <li>the nickname length limit<br>
+ * <li>the connection timeout<br>
+ * <li>the session key length<br>
+ * <li>the public and private key<br>
+ * <li>the active UI<br>
+ * <li>the 'debug mode'-boolean<br>
+ * <li>the user's nickname<br>
+ * <li>the 'print exceptions'-boolean
+ * </ul>
  */
 public class Settings {
   /** The parent {@code Core} object */
@@ -100,7 +104,6 @@ public class Settings {
   private int port = 1337;
   
   /** Path to the SQLite database file.*/
-  @IOHandler()
   private String dbLocation;
 
   /**
@@ -115,12 +118,24 @@ public class Settings {
 
   /**
    * Constructs a new {@code Settings} object.<br>
-   * <ul>
-   * <li>{@code "load"}: loads the {@code Settings} from the {@code messenger.cfg} file.
-   * <li>{@code "void"}: creates a {@code Settings} object that has no values attached to it.
-   * <li>{@code "default"}: creates a {@code Settings} object with the default values. (default
-   * action)
-   * </ul>
+   * <table>
+   * <tr>
+   * <th>Creation type</th>
+   * <th>Description</th>
+   * </tr>
+   * <tr>
+   * <td>{@code "load"}</td>
+   * <td>Loads the {@code Settings} from the {@code messenger.cfg} file.</td>
+   * </tr>
+   * <tr>
+   * <td>{@code "void"}</td>
+   * <td>Creates a {@code Settings} object that has no values attached to it.</td>
+   * </tr>
+   * <tr>
+   * <td>{@code "default"}</td>
+   * <td>Creates a {@code Settings} object with the default values. (default action)</td>
+   * </tr>
+   * </table>
    * 
    * @param core The parent {@code Core} object.
    * @param creationType The type of the creation. See above.
@@ -433,19 +448,63 @@ public class Settings {
    * Sets all values of the Settings object to the default ones and generates a new key pair. <br>
    * <br>
    * Defaults:<br>
-   * {@code msgLenLimit�������}= {@code 4098}<br>
-   * {@code headerLenLimit����}= {@code 256}<br>
-   * {@code nickLenLimit������}= {@code 64}<br>
-   * {@code sessionKeyLen�����}= {@code 16}<br>
-   * {@code connectionTimeout�}= {@code 1000}<br>
-   * {@code gui���������������}= {@code false}<br>
-   * {@code debug�������������}= {@code false}<br>
-   * {@code exceptions��������}= {@code false}<br>
-   * {@code color�������������}= {@code true}<br>
-   * {@code ownNick�����������}= {@code "MissingNo"}<br>
-   * {@code charSet�����������}= {@code "DEFAULT"}<br>
-   * {@code host��������������}= {@code "localhost"}<br>
-   * {@code port��������������}= {@code 1337}
+   * <table>
+   * <tr>
+   * <th>Value</th>
+   * <th>Default</th>
+   * </tr>
+   * <td>{@code  msgLenLimit}</td>
+   * <td>{@code  4098}</td></tr>
+   * <tr>
+   * <td>{@code  headerLenLimit}</td>
+   * <td>{@code 256}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code nickLenLimit}</td>
+   * <td>{@code  64}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code sessionKeyLen}</td>
+   * <td> {@code 16}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code connectionTimeout}</td>
+   * <td>{@code 1000}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code gui}</td>
+   * <td> {@code false}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code debug}</td>
+   * <td>{@code false}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code exceptions}</td>
+   * <td> {@code false}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code color}</td>
+   * <td>{@code true}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code ownNick}</td>
+   * <td> {@code "MissingNo"}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code charSet}</td>
+   * <td>{@code "DEFAULT"}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code host}</td>
+   * <td>{@code "localhost"}</td>
+   * </tr>
+   * <tr>
+   * <td>{@code port}</td>
+   * <td>{@code 1337}</td>
+   * </tr>
+   * <table>
+   * <br>
    * 
    * @param save if set to true the changes will be saved.
    */
@@ -472,7 +531,7 @@ public class Settings {
   }
 
   /**
-   * Saves the settings in a configuration file. If such a file does not exists it will be created.<br>
+   * Saves the settings in a configuration file. If such a file does not exist it will be created.<br>
    * <br>
    * 
    * This method tries to save a field by invoking the corresponding <code>getter</code>-method. The
@@ -554,7 +613,7 @@ public class Settings {
   /**
    * Loads the configuration file. If one of the keys is unknown or the value couldn't be parsed the
    * default settings will be loaded. If one of the values in invalid it will be replaced with the
-   * corresponding default value. If the file does not exists it will be created and the default
+   * corresponding default value. If the file does not exist it will be created and the default
    * values will be loaded.<br>
    * <br>
    * 
