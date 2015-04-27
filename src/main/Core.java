@@ -1,20 +1,17 @@
 package main;
 
 import java.io.IOException;
-import java.util.UUID;
 
-import persons.User;
 import manager.ConversationManager;
 import manager.MessageManager;
 import misc.Settings;
+import persons.User;
 import userInterface.GraphicalUserIterface;
 import userInterface.TerminalUserInterface;
 import userInterface.UserInterface;
 import connection.Client;
 import connection.Server;
 import database.Database;
-import exchange.commands.Command;
-import exchange.commands.ExitCommand;
 
 /**
  * The Core class. <br>
