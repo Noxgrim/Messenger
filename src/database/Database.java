@@ -1,7 +1,6 @@
 package database;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -18,8 +17,6 @@ import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
 
-import javax.swing.text.html.HTMLDocument.HTMLReader.IsindexAction;
-
 import coversations.Conversation;
 import coversations.GuestConversation;
 import coversations.HostConversation;
@@ -35,7 +32,7 @@ import main.Core;
  * This class can be provides access to the Messenger's database.
  * The database consists of the following tables:
  * Messages:
- * | id | content | sender_uuid | conversation_id | sent |
+ * | id | content | sender_id | conversation_id | sent |
  * Contacts:
  * | id | name | uuid | public_key | address |
  * Users:
@@ -53,13 +50,23 @@ public class Database implements AutoCloseable {
    * @throws DBException 
    */
   public Database() throws DBException {
+    this(false);
+  }
+  
+  public Database(boolean createTables) throws DBException {
     try {
       Class.forName("org.sqlite.JDBC");
       File dbFile = new File(Core.getInstance().getSettings().getDbLocation());
-      if (!dbFile.exists() || dbFile.isDirectory() || !dbFile.canRead() || !dbFile.canWrite())
-        Core.getInstance().printError("The database file isn't accessible.",
-            new FileNotFoundException("The database file doesn't exist or isn't accessible."),
-            true);
+      if (dbFile.exists() && (dbFile.isDirectory() || !dbFile.canRead() || !dbFile.canWrite()))
+        throw new DBException("Database file is directory or not readable/writeable.");
+      if (!dbFile.exists()) {
+        if (createTables) {
+          connect(dbFile.getPath());
+          createTables();
+        } else {
+          throw new DBException("Database file at "+dbFile.getPath()+" doesn't exist.");
+        }
+      }
       connect(dbFile.getPath());
     } catch (ClassNotFoundException e) {
       throw new DBException("The SQLite database driver isn't accessible.\n", e);
@@ -70,39 +77,20 @@ public class Database implements AutoCloseable {
     check_connection();
   }
   
-  public Database(boolean createTables) { //TODO finish this
-    assert createTables(conn);
-  }
-  
-  public static boolean createTables(Connection conn) {
-    try (Statement stmt = conn.createStatement();) {
-      createMessagesTable(stmt);
-      createContactsTable(stmt);
-      createUsersTable(stmt);
-      createConversationsTable(stmt);
-    } catch (SQLException e) {
-      Core.getInstance().printError("Tables couldn't be created, because the connection to the"+
-          " database failed.", e, false);
-      return false;
-    }
-    return true;
-  }
-  
-  public boolean addMessage(InternalMessage m) {
+  public void addMessage(InternalMessage m) throws DBException {
     //Messages:
-    //| id | content | sender_uuid | conversation_id | sent |
+    //| id | content | sender_id | conversation_id | sent |
     try (Statement stmt = conn.createStatement();) {
       EscapedString content = new EscapedString(m.getContent());
-      EscapedString sender_uuid = new EscapedString(m.getUuidSender());
+      int sender_id = getContactId(new EscapedString(m.getUuidSender()));
       int conversation_id = getConversationId(new EscapedString(m.getUuidConversation()));
       boolean sent = m.isSent();
-      String sql = "INSERT INTO "+MESSAGES_TABLE + "(content,sender_uuid,conversation_id,sent) "
-          + "VALUES ("+content.toQuotedString()+","+sender_uuid.toQuotedString()+","+conversation_id
+      String sql = "INSERT INTO "+MESSAGES_TABLE + "(content,sender_id,conversation_id,sent) "
+          + "VALUES ("+content.toQuotedString()+","+sender_id+","+conversation_id
           + ","+(sent?1:0)+");";
       stmt.executeUpdate(sql);
-      return true;
     } catch (SQLException e) {
-      return false;
+      throw new DBException(e.getMessage());
     }
   }
   
@@ -111,13 +99,14 @@ public class Database implements AutoCloseable {
    * @param numberOfMessages
    * @param onlyUnsent
    * @return
+   * @throws DBException 
    * 
    * @throws IllegaArgumentException
    *   If numberOfMessages <= 0
    */
-  public List<Message> getLastNMessages(int numberOfMessages, boolean onlyUnsent) {
+  public List<Message> getLastNMessages(int numberOfMessages, boolean onlyUnsent) throws DBException {
     //Messages:
-    //| id | content | sender_uuid | conversation_id | sent |
+    //| id | content | sender_id | conversation_id | sent |
     if (!(numberOfMessages > 0)) {
       throw new IllegalArgumentException("numberOfMessages for getLastNMessages(int,boolean) "+
                                          "must be greater than 0.");
@@ -134,27 +123,26 @@ public class Database implements AutoCloseable {
       LinkedList<Message> results = new LinkedList<Message>();
       while (rs.next()) {
         String content = rs.getString("content");
-        String sender_uuid = rs.getString("sender_uuid");
+        int sender_id = rs.getInt("sender_id");
         int conversation_id = rs.getInt("conversation_id");
         int sent_int = rs.getInt("sent");
         assert sent_int == 0 || sent_int == 1: "Fatal error: sent_int must be 0 or 1, but is "
                                                +sent_int;
         boolean sent =  sent_int == 1 ? true : false;
         results.add(new InternalMessage(content, getConversation(conversation_id).getUUID(),
-            sender_uuid, sent));
+            getContactUuid(sender_id), sent));
       }
       return results;
     } catch (FormatException|SQLException e) {
-      Core.getInstance().printError("Couldn't get messages.", e, false);
-      return null;
+      throw new DBException(e.getMessage());
     }
   }
   
-  public List<Message> getLastNMessages(int numberOfMessages) {
+  public List<Message> getLastNMessages(int numberOfMessages) throws DBException {
     return getLastNMessages(numberOfMessages, false);
   }
   
-  public List<Message> getLastNUnsentMessages(int numberOfMessages) {
+  public List<Message> getLastNUnsentMessages(int numberOfMessages) throws DBException {
     return getLastNMessages(numberOfMessages, true);
   }
   
@@ -213,6 +201,25 @@ public class Database implements AutoCloseable {
     }
   }
   
+  public Contact getContact(String uuid) throws DBException {
+    try (Statement stmt = conn.createStatement();) {
+      String sql = "SELECT * FROM "+CONTACTS_TABLE+" where uuid = "
+          +new EscapedString(uuid).toQuotedString()+";";
+      ResultSet rs = stmt.executeQuery(sql);
+      if (rs.next()) {
+        String name = EscapedString.unescape(rs.getString("name"));
+        String public_key = EscapedString.unescape(rs.getString("public_key"));
+        InetSocketAddress address =
+            (InetSocketAddress) getObjFromSerializedBlob(rs.getBlob("address"));
+        return new Contact(name, uuid, public_key, address);
+      } else {
+        throw new DBException("Contact not found: "+uuid);
+      }
+    } catch (SQLException e) {
+      throw new DBException(e.getMessage());
+    } 
+  }
+  
   public boolean addUser(User u) {
     //Users:
     //| id | name | uuid | private_key | public_key |
@@ -240,16 +247,16 @@ public class Database implements AutoCloseable {
    */
   public boolean addConversation(Conversation c) throws DBException {
     //Conversations:
-    //| id | name | uuid | participants_ids | host |
+    //| id | name | uuid | participants_uuids | host |
     EscapedString name = new EscapedString(c.getName());
     EscapedString uuid = new EscapedString(c.getUUID());
-    Blob participants_ids = getSerializedBlob((Serializable) c.getParticipantsIds());
+    Blob participants_uuids = getSerializedBlob((Serializable) c.getParticipantsIds());
     int host = c.isHost() ? 1 : 0;
-    String sql = "INSERT INTO "+CONVERSATIONS_TABLE+"(name,uuid,participants_ids,host) VALUES ("
+    String sql = "INSERT INTO "+CONVERSATIONS_TABLE+"(name,uuid,participants_uuids,host) VALUES ("
         + name.toQuotedString() + "," + uuid.toQuotedString()+ ",?,"
         + host + ");";
     try (PreparedStatement pstmt = conn.prepareStatement(sql);) {
-      pstmt.setBlob(1, participants_ids);
+      pstmt.setBlob(1, participants_uuids);
       ResultSet rs = pstmt.executeQuery("SELECT id FROM "+CONVERSATIONS_TABLE+" WHERE uuid = "
           + uuid.toQuotedString()+";");
       if (rs.next()) {
@@ -267,7 +274,7 @@ public class Database implements AutoCloseable {
   @SuppressWarnings("unchecked")
   public List<Conversation> getConversations() {
   //Conversations:
-    //| id | name | uuid | participants_ids | host |
+    //| id | name | uuid | participants_uuids | host |
     try (Statement stmt = conn.createStatement();) {
       LinkedList<Conversation> results = new LinkedList<Conversation>();
       String sql = "SELECT * FROM "+CONVERSATIONS_TABLE+";";
@@ -275,13 +282,13 @@ public class Database implements AutoCloseable {
       while(rs.next()) {
         String name = EscapedString.unescape(rs.getString("name"));
         String uuid = EscapedString.unescape(rs.getString("uuid"));
-        Object participants_uuids_obj = getObjFromSerializedBlob(rs.getBlob("participants_ids"));
+        Object participants_uuids_obj = getObjFromSerializedBlob(rs.getBlob("participants_uuids"));
         LinkedList<String> participants_uuids;
         if (participants_uuids_obj instanceof LinkedList<?>) {
           for (Object o : (LinkedList<?>)participants_uuids_obj)
             assert o instanceof String: "Fatal error while reading the database: UUID not a string";
         } else {
-          throw new AssertionError("Blob participants_ids does not represent a LinkedList");
+          throw new AssertionError("Blob participants_uuids does not represent a LinkedList");
         }
         participants_uuids = (LinkedList<String>)participants_uuids_obj;
         boolean host = rs.getInt("host") == 1 ? true : false;
@@ -295,7 +302,7 @@ public class Database implements AutoCloseable {
     }
   }
   
-  public Conversation getConversation(String convUUID) {
+  public Conversation getConversation(String convUUID) throws DBException {
     try (Statement stmt = conn.createStatement();) {
       EscapedString escUUID = new EscapedString(convUUID);
       String sql = "SELECT * FROM "+CONVERSATIONS_TABLE+" WHERE uuid = "
@@ -305,38 +312,28 @@ public class Database implements AutoCloseable {
       while(rs.next()) {
         ++count;
         assert count == 1: "Fatal error: UUID found more than once in database."
-                           +"(getConversation(String)"; 
+                           +"(getConversation(String))"; 
         String name = EscapedString.unescape(rs.getString("name"));
         String uuid = EscapedString.unescape(rs.getString("uuid"));
         @SuppressWarnings("unchecked")
-        List<String> participants_ids = (LinkedList<String>)
-            getObjFromSerializedBlob(rs.getBlob("participants_ids");
+        List<String> participants_uuids = (LinkedList<String>)
+            getObjFromSerializedBlob(rs.getBlob("participants_uuids"));
+        List<Contact> participants = new LinkedList<>();
+        for (String participant_uuid : participants_uuids) {
+            participants.add(getContact(participant_uuid));
+        }
         boolean host = rs.getInt("host") == 1 ? true : false;
-        return new Conversation(uuid, name, participants_ids, host);
+        if (host) {
+          return new HostConversation(participants, uuid, name);
+        } else {
+          //TODO maybe change this; I just assume that the first ID will be the host
+          return new GuestConversation(participants.get(0), uuid, name);
+        }
       }
     } catch (SQLException e) {
-      Core.getInstance().printError("Could not get contacts.", e, false);
-      return null;
+      throw new DBException(e.getMessage());
     }
-  }
-  
-  public Conversation getConversation(int convID) {
-    try (Statement stmt = conn.createStatement();) {
-      String sql = "SELECT * FROM "+CONVERSATIONS_TABLE+" WHERE id = "+convID+";";
-      ResultSet rs = stmt.executeQuery(sql);
-      while(rs.next()) {
-        String name = EscapedString.unescape(rs.getString("name"));
-        String uuid = EscapedString.unescape(rs.getString("uuid"));
-        @SuppressWarnings("unchecked")
-        List<String> participants_ids = (LinkedList<String>)
-            getObjFromSerializedBlob(rs.getBlob("participants_ids");
-        boolean host = rs.getInt("host") == 1 ? true : false;
-        return new Conversation(uuid, name, participants_ids, host);
-      }
-    } catch (SQLException e) {
-      Core.getInstance().printError("Could not get contacts.", e, false);
-      return null;
-    }
+    return null;
   }
   
   @Override
@@ -355,11 +352,11 @@ public class Database implements AutoCloseable {
   }
   
   private static void createMessagesTable(Statement stmt) throws SQLException {
-    //COLUMNS: | id | content | sender_uuid | conversation_id | sent |
+    //COLUMNS: | id | content | sender_id | conversation_id | sent |
     String sql = "CREATE TABLE "+MESSAGES_TABLE
         + "(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
         + "content TEXT NOT NULL,"
-        + "sender_uuid TEXT NOT NULL,"
+        + "sender_id INTEGER NOT NULL,"
         + "conversation_id INTEGER NOT NULL,"
         + "sent INTEGER NOT NULL);";
     stmt.executeUpdate(sql);
@@ -393,7 +390,7 @@ public class Database implements AutoCloseable {
         + "(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
         + "name TEXT NOT NULL,"
         + "uuid TEXT NOT NULL,"
-        + "participants_ids TEXT NOT NULL,"
+        + "participants_uuids TEXT NOT NULL,"
         + "host INTEGER NOT NULL);";
     stmt.executeUpdate(sql);
   }
@@ -443,15 +440,76 @@ public class Database implements AutoCloseable {
     }
   }
   
-  private int getConversationId(EscapedString uuid) throws SQLException {
+  private int getConversationId(EscapedString uuid) throws DBException {
+    try {
+      return getId(uuid, CONVERSATIONS_TABLE);
+    } catch (SQLException e) {
+      throw new DBException(e.getMessage());
+    }
+  }
+  
+  private int getContactId(EscapedString uuid) throws DBException {
+    try {
+      return getId(uuid, CONTACTS_TABLE);
+    } catch (SQLException e) {
+      throw new DBException(e.getMessage());
+    }
+  }
+  
+  private int getId(EscapedString uuid, String table) throws SQLException {
+    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE || table == USERS_TABLE || 
+        table == CONVERSATIONS_TABLE : "Trying to get ID of "
+        +uuid.getUnescaped()+" in a nonexistant table: "+table;
     try (Statement stmt = conn.createStatement();) {
-      ResultSet rs = stmt.executeQuery("SELECT id FROM "+CONTACTS_TABLE+" WHERE uuid = "
-          + uuid.toQuotedString() + ";");
+      ResultSet rs = stmt.executeQuery("SELECT id FROM "+table+" WHERE uuid = "
+          +uuid.toQuotedString() + ";");
       if (rs.next()) {
-        return rs.getInt("id");
+        int ret = rs.getInt("id");
+        assert !rs.next() : "UUID contained more than once in database: "+uuid.getUnescaped();
+        return ret;
       } else {
-        throw new SQLException("UUID does not exist in "+CONTACTS_TABLE);
+        throw new SQLException("UUID does not exist in "+table+": "+uuid.getUnescaped());
       }
+    }
+  }
+  
+  private String getContactUuid(int id) throws DBException {
+    try {
+      return getUuid(id, CONTACTS_TABLE);
+    } catch (SQLException e) {
+      throw new DBException(e.getMessage());
+    }
+  }
+  
+  private String getConversationUuid(int id) throws DBException {
+    try {
+      return getUuid(id, CONVERSATIONS_TABLE);
+    } catch (SQLException e) {
+      throw new DBException(e.getMessage());
+    }
+  }
+  
+  private String getUuid(int id, String table) throws SQLException {
+    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE || table == USERS_TABLE || 
+        table == CONVERSATIONS_TABLE : "Trying to get UUID of "
+        +id+" in a nonexistant table: "+table;
+    try (Statement stmt = conn.createStatement();) {
+      ResultSet rs = stmt.executeQuery("SLECT uuid FROM "+table+" WHERE id = "+id+";");
+      if (rs.next()) return EscapedString.unescape(rs.getString("uuid"));
+      else throw new SQLException("ID "+id+" not found in table "+table);
+    }
+  }
+  
+  private Conversation getConversation(int id) throws DBException {
+    return getConversation(getConversationUuid(id));
+  }
+  
+  private void createTables() throws SQLException {
+    try (Statement stmt = conn.createStatement();) {
+      createMessagesTable(stmt);
+      createContactsTable(stmt);
+      createUsersTable(stmt);
+      createConversationsTable(stmt);
     }
   }
   
