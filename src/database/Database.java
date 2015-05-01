@@ -26,7 +26,6 @@ import exchange.InternalMessage;
 import exchange.Message;
 import persons.Contact;
 import persons.User;
-import main.Core;
 
 /**
  * This class can be provides access to the Messenger's database.
@@ -45,18 +44,21 @@ public class Database implements AutoCloseable {
 //public
   /**
    * Connects to the database.
-   * If exceptions occur they aren't thrown, but reported to the Core by using the printError()
-   * method.
    * @throws DBException 
    */
-  public Database() throws DBException {
-    this(false);
+  public Database(String dbLocation) throws DBException {
+    this(false, dbLocation);
   }
   
-  public Database(boolean createTables) throws DBException {
+  /**
+   * Connects to the database.
+   * @param createTables
+   *   If this is true, the database will be created if the file does not exist yet.
+   */
+  public Database(boolean createTables, String dbLocation) throws DBException {
     try {
       Class.forName("org.sqlite.JDBC");
-      File dbFile = new File(Core.getInstance().getSettings().getDbLocation());
+      File dbFile = new File(dbLocation);
       if (dbFile.exists() && (dbFile.isDirectory() || !dbFile.canRead() || !dbFile.canWrite()))
         throw new DBException("Database file is directory or not readable/writeable.");
       if (!dbFile.exists()) {
@@ -77,6 +79,12 @@ public class Database implements AutoCloseable {
     check_connection();
   }
   
+  /**
+   * Add a message to the database.
+   * @param m
+   *   <code>InternalMessage</code>
+   * @throws DBException
+   */
   public void addMessage(InternalMessage m) throws DBException {
     //Messages:
     //| id | content | sender_id | conversation_id | sent |
@@ -95,10 +103,12 @@ public class Database implements AutoCloseable {
   }
   
   /**
-   * 
+   * Get a specific amount of the last messages in the database.
    * @param numberOfMessages
    * @param onlyUnsent
+   *   Only return messages which haven't been sent yet.
    * @return
+   *   A <code>List</code> of <code>Message</code>s
    * @throws DBException 
    * 
    * @throws IllegaArgumentException
@@ -108,7 +118,7 @@ public class Database implements AutoCloseable {
     //Messages:
     //| id | content | sender_id | conversation_id | sent |
     if (!(numberOfMessages > 0)) {
-      throw new IllegalArgumentException("numberOfMessages for getLastNMessages(int,boolean) "+
+      throw new IllegalArgumentException("NumberOfMessages for getLastNMessages(int,boolean) "+
                                          "must be greater than 0.");
     }
     try (Statement stmt = conn.createStatement();) {
@@ -138,28 +148,40 @@ public class Database implements AutoCloseable {
     }
   }
   
+  /**
+   * Get a specific amount of the last messages in the database.
+   * @param numberOfMessages
+   * @return
+   *   A <code>List</code> of <code>Message</code>s
+   * @throws DBException 
+   * 
+   * @throws IllegaArgumentException
+   *   If numberOfMessages <= 0
+   */
   public List<Message> getLastNMessages(int numberOfMessages) throws DBException {
     return getLastNMessages(numberOfMessages, false);
   }
   
-  public List<Message> getLastNUnsentMessages(int numberOfMessages) throws DBException {
-    return getLastNMessages(numberOfMessages, true);
-  }
-  
   /**
-   * 
+   * Add a <code>Contact</code> to the database,
    * @param c
+   *   <code>Contact</code>
    * @return
    * @throws DBException
-   *   If the contact's UUID already exists in the database.
+   *   If the <code>Contact</code>'s UUID already exists in the database.
    */
-  public boolean addContact(Contact c) throws DBException {
+  public void addContact(Contact c) throws DBException {
     //Contacts:
     //| id | name | uuid | public_key | address |
     EscapedString name = new EscapedString(c.getNickname());
     EscapedString uuid = new EscapedString(c.getUUID());
     EscapedString public_key = new EscapedString(c.getPublicKey());
-    Blob address = getSerializedBlob(c.getAddress());
+    Blob address;
+    try {
+      address = getSerializedBlob(c.getAddress());
+    } catch (SQLException e) {
+      throw new DBException("Adding contact failed (failed to serialize address):"+e.getMessage());
+    }
     String sql = "INSERT INTO "+CONTACTS_TABLE+"(name,uuid,public_key,address) VALUES ("
         + name.toQuotedString() + "," + uuid.toQuotedString()+ ","+public_key.toQuotedString()
         + ",?);";
@@ -173,13 +195,17 @@ public class Database implements AutoCloseable {
       rs.close();
       pstmt.executeUpdate(sql);
     } catch (SQLException e) {
-      Core.getInstance().printError("Could not add contact.", e, false);
-      return false;
+      throw new DBException("Adding contact failed: "+e.getMessage());
     }
-    return true;
   }
   
-  public List<Contact> getContacts() {
+  /**
+   * Get a list of all <code>Contact</code>s in the database.
+   * @return
+   *  <code>List</code> of <code>Contact</code>s
+   * @throws DBException
+   */
+  public List<Contact> getContacts() throws DBException {
     //Contacts:
     //| id | name | uuid | public_key | address |
     try (Statement stmt = conn.createStatement();) {
@@ -196,11 +222,17 @@ public class Database implements AutoCloseable {
       }
       return results;
     } catch (SQLException e) {
-      Core.getInstance().printError("Could not get contacts.", e, false);
-      return null;
+      throw new DBException("Retrieving contacts from database failed:"+e.getMessage());
     }
   }
   
+  /**
+   * Get a <code>Contact</code> from the database by its UUID,
+   * @param uuid
+   * @return
+   *   <code>Contact</code>
+   * @throws DBException
+   */
   public Contact getContact(String uuid) throws DBException {
     try (Statement stmt = conn.createStatement();) {
       String sql = "SELECT * FROM "+CONTACTS_TABLE+" where uuid = "
@@ -216,11 +248,18 @@ public class Database implements AutoCloseable {
         throw new DBException("Contact not found: "+uuid);
       }
     } catch (SQLException e) {
-      throw new DBException(e.getMessage());
+      throw new DBException("Getting contact failed: "+e.getMessage());
     } 
   }
   
-  public boolean addUser(User u) {
+  /**
+   * Add a <code>User</code> to the database.
+   * @param u
+   *   <code>User</code>
+   * @return
+   * @throws DBException 
+   */
+  public void addUser(User u) throws DBException {
     //Users:
     //| id | name | uuid | private_key | public_key |
     try (Statement stmt = conn.createStatement();) {
@@ -232,25 +271,30 @@ public class Database implements AutoCloseable {
           + "VALUES ("+name.toQuotedString()+","+uuid.toQuotedString()+","
           + private_key.toQuotedString() + ","+ public_key.toQuotedString() +");";
       stmt.executeUpdate(sql);
-      return true;
     } catch (SQLException e) {
-      return false;
+      throw new DBException("Adding user to database failed: "+e.getMessage());
     }
   }
   
   /**
-   * 
+   * Add <code>Conversation</code> to the database.
    * @param c
+   *   <code>Conversation</code>
    * @return
    * @throws DBException
-   *   If the UUID of the contact exists in the database.
    */
-  public boolean addConversation(Conversation c) throws DBException {
+  public void addConversation(Conversation c) throws DBException {
     //Conversations:
     //| id | name | uuid | participants_uuids | host |
     EscapedString name = new EscapedString(c.getName());
     EscapedString uuid = new EscapedString(c.getUUID());
-    Blob participants_uuids = getSerializedBlob((Serializable) c.getParticipantsIds());
+    Blob participants_uuids;
+    try {
+      participants_uuids = getSerializedBlob((Serializable) c.getParticipantsIds());
+    } catch (SQLException e) {
+      throw new DBException("Adding conversation failed (serializing participants' ids failed):"
+          +e.getMessage());
+    }
     int host = c.isHost() ? 1 : 0;
     String sql = "INSERT INTO "+CONVERSATIONS_TABLE+"(name,uuid,participants_uuids,host) VALUES ("
         + name.toQuotedString() + "," + uuid.toQuotedString()+ ",?,"
@@ -265,14 +309,21 @@ public class Database implements AutoCloseable {
       rs.close();
       pstmt.executeUpdate(sql);
     } catch (SQLException e) {
-      Core.getInstance().printError("Could not add conversation.", e, false);
-      return false;
+      throw new DBException("Adding conversation failed: "+e.getMessage());
     }
-    return true;
   }
   
+  /**
+   * Get all <code>Conversation</code>s in the database.
+   * @return
+   *   <code>List</code> of <code>Conversation</code>s
+   * @throws DBException
+   * 
+   * Has to suppress "unchecked" because it tries to cast a deserialized Object to a
+   * <code>List&lt;String&gt;</code>. (I assert that the object is valid beforehand.)
+   */
   @SuppressWarnings("unchecked")
-  public List<Conversation> getConversations() {
+  public List<Conversation> getConversations() throws DBException {
   //Conversations:
     //| id | name | uuid | participants_uuids | host |
     try (Statement stmt = conn.createStatement();) {
@@ -297,11 +348,18 @@ public class Database implements AutoCloseable {
       }
       return results;
     } catch (SQLException e) {
-      Core.getInstance().printError("Could not get contacts.", e, false);
-      return null;
+      throw new DBException("Retrieving conversations from the database failed: "+e.getMessage());
     }
   }
   
+  /**
+   * Get a <code>Conversation</code> from the database by its UUID.
+   * @param convUUID
+   *   <code>String</code> that contains the UUID
+   * @return
+   *   <code>Conversation</code>
+   * @throws DBException
+   */
   public Conversation getConversation(String convUUID) throws DBException {
     try (Statement stmt = conn.createStatement();) {
       EscapedString escUUID = new EscapedString(convUUID);
@@ -336,17 +394,23 @@ public class Database implements AutoCloseable {
     return null;
   }
   
+  /**
+   * Close the connection to the database.
+   * @throws DBException
+   */
   @Override
-  public void close() {
+  public void close() throws DBException {
     if (conn != null) {
       try {
         conn.close();
       } catch (SQLException e) {
-        Core.getInstance().printError("Error while closing the database.", e, false);
+        throw new DBException("Closing the database connection failed: "+e.getMessage());
       }
     }
   }
+  
 //private
+  /** Connect to the database.*/
   private void connect(String dbPath) throws SQLException {
     conn = DriverManager.getConnection("jdbc:sqlite:"+dbPath);
   }
@@ -395,7 +459,7 @@ public class Database implements AutoCloseable {
     stmt.executeUpdate(sql);
   }
   
-  //used to check whether the constants are valid
+  /** used to check whether the constants are valid*/
   private void assert_constants() {
     assert MESSAGES_TABLE != null && !MESSAGES_TABLE.isEmpty() && !MESSAGES_TABLE.contains("'");
     assert CONTACTS_TABLE != null && !CONTACTS_TABLE.isEmpty() && !CONTACTS_TABLE.contains("'");
@@ -413,30 +477,22 @@ public class Database implements AutoCloseable {
     }
   }
   
-  private Blob getSerializedBlob(Serializable s) {
-    Blob b = null;
-    try {
-      b = conn.createBlob();
-    } catch (SQLException e) {
-      Core.getInstance().printError("Serializing failed.",e,false);
-      return null;
-    }
+  private Blob getSerializedBlob(Serializable s) throws SQLException {
+    Blob b = conn.createBlob();
     try (OutputStream os = b.setBinaryStream(1);
         ObjectOutputStream oos = new ObjectOutputStream(os);) {
       oos.writeObject(s);
-    } catch (IOException |SQLException e) {
-      Core.getInstance().printError("Serializing failed.",e,false);
-      return null;
+    } catch (IOException e) {
+      throw new SQLException(e.getMessage());
     }
     return b;
   }
   
-  private Object getObjFromSerializedBlob(Blob b) {
+  private Object getObjFromSerializedBlob(Blob b) throws SQLException {
     try (ObjectInputStream ois = new ObjectInputStream(b.getBinaryStream());) {
       return ois.readObject();
-    } catch (IOException|SQLException|ClassNotFoundException e) {
-      Core.getInstance().printError("Retrieving serialized object failed.",e,false);
-      return null;
+    } catch (IOException|ClassNotFoundException e) {
+      throw new SQLException(e.getMessage());
     }
   }
   
