@@ -7,6 +7,6 @@ The messenger will (hopefully) offer encrypted comunication via GnuPG.
 You can use it via a terminal or a GUI. (Both modi are not finished yet.)
 
 ## State
-Because we both have to do mutch work for school, this project is only a side project and we wont update it daily (sometimes the project could be paused for weeks or even months).
-Currently the programm is in a very unfinshed state. You neither can run nor compile it.
+Because we both have to do much work for school, this project is only a side project and we won't update it frequently (sometimes the project could be paused for weeks or even months).
+Currently the programm is in a very unfinshed state. You can neither run nor compile it. :-)
 
