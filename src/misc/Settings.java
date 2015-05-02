@@ -16,7 +16,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.InetAddress;
 import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import main.Core;
@@ -612,6 +615,11 @@ public class Settings {
 				String getter = "";
 				String comment = "";
 				String fieldName = f.getName();
+
+				fieldName = Character.toUpperCase(fieldName.charAt(0))
+						+ ((fieldName.length() == 1) ? "" : fieldName
+								.substring(1, fieldName.length()));
+
 				if (ioH != null) {
 					if (!ioH.save() || Modifier.isFinal(f.getModifiers()))
 						continue;
@@ -621,9 +629,6 @@ public class Settings {
 						getter = "get" + fieldName;
 					if (!comment.isEmpty())
 						comment = " #" + comment;
-					fieldName = Character.toUpperCase(fieldName.charAt(0))
-							+ ((fieldName.length() == 1) ? "" : fieldName
-									.substring(1, fieldName.length()));
 
 					try {
 						String value = this.getClass().getMethod(getter)
@@ -1004,6 +1009,147 @@ public class Settings {
 		 * Comment that will be written behind the saved field value.
 		 */
 		String comment() default "";
+	}
+
+	public static class FieldData implements Comparable<FieldData> {
+
+		private Field field;
+
+		private String getter;
+		private String setter;
+		private String comment;
+
+		private boolean accessible;
+		private boolean loadable;
+		private boolean saveable;
+
+		public FieldData(Field field) {
+			this(field, field.getDeclaredAnnotation(IOHandler.class));
+		}
+
+		public FieldData(Field field, IOHandler ioh) {
+			this.field = field;
+
+			accessible = !Modifier.isFinal(field.getModifiers());
+
+			if (ioh != null) {
+				getter = ioh.getter();
+				setter = ioh.setter();
+				comment = ((!ioh.comment().isEmpty()) ? " #" + ioh.comment()
+						: "");
+
+				loadable = ioh.load() && accessible;
+				saveable = ioh.save() && accessible;
+			} else {
+
+				String fieldName = Character.toUpperCase(field.getName()
+						.charAt(0))
+						+ field.getName()
+								.substring(1, field.getName().length());
+				getter = "get" + fieldName;
+				setter = "set" + fieldName;
+				comment = "";
+
+				loadable = accessible;
+				saveable = accessible;
+			}
+		}
+
+		
+		public Field getField() {
+			return field;
+		}
+
+		public String getGetter() {
+			return getter;
+		}
+		
+		public String getSetter() {
+			return setter;
+		}
+
+		public String getComment() {
+			return comment;
+		}
+
+	
+		public boolean isLoadable() {
+			return loadable;
+		}
+
+		public boolean isSaveable() {
+			return saveable;
+		}
+
+		public boolean isAccessible() {
+			return accessible;
+		}
+
+		/**
+		 * Compares the names.
+		 */
+		@Override
+		public int compareTo(FieldData o) {
+			return this.field.getName().compareTo(o.field.getName());
+		}
+
+		public String getSavedSpelling() {
+			String name = "", fieldName = field.getName();
+			for (char c : fieldName.toCharArray())
+				if (Character.toUpperCase(c) == c)
+					name += ("-" + c).toLowerCase();
+				else
+					name += c;
+			if (name.startsWith("-"))
+				name = name.substring(1, name.length());
+			
+			return name;
+		}
+		
+		public static List<FieldData> getAccessibleFields(Class<Object> clazz) {
+			ArrayList<FieldData> list = new ArrayList<FieldData>();
+			
+			for (Field f : clazz.getDeclaredFields()) {
+				FieldData fw = new FieldData(f);
+				if (fw.isAccessible())
+					list.add(fw);
+			}
+			Collections.sort(list);
+			return list;
+		}
+		
+		public static List<FieldData> getSaveableFields(Class<Object> clazz) {
+			ArrayList<FieldData> list = new ArrayList<FieldData>();
+			
+			for (Field f : clazz.getDeclaredFields()) {
+				FieldData fw = new FieldData(f);
+				if (fw.isSaveable())
+					list.add(fw);
+			}
+			Collections.sort(list);
+			return list;
+		}
+		
+		public static List<FieldData> getLoadableFields(Class<Object> clazz) {
+			ArrayList<FieldData> list = new ArrayList<FieldData>();
+			
+			for (Field f : clazz.getDeclaredFields()) {
+				FieldData fw = new FieldData(f);
+				if (fw.isLoadable())
+					list.add(fw);
+			}
+			Collections.sort(list);
+			return list;
+		}
+		
+		public static FieldData getBySavedSpelling(String savedSpelling, Class<Object> clazz) {
+			List<FieldData> list = FieldData.getAccessibleFields(clazz);
+			
+			for (FieldData fw : list) 
+				if (fw.getSavedSpelling().equals(savedSpelling))
+					return fw;
+			return null;
+		}
 	}
 
 }
