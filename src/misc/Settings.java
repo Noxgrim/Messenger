@@ -16,7 +16,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.InetAddress;
 import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import main.Core;
@@ -99,7 +102,7 @@ public class Settings {
 	 */
 	private String charSet = null;
 	/** The default char set. */
-	private static final String DEFAULT_CHAR_SET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ!\"�$%&/()=?\\+#-.,*'_:;~";
+	private static final String DEFAULT_CHAR_SET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ!\"ï¿½$%&/()=?\\+#-.,*'_:;~";
 
 	/** The nickname of the user. */
 	private String ownNick = null;
@@ -606,50 +609,23 @@ public class Settings {
 			br.write('#' + DateFormat.getDateTimeInstance(DateFormat.MEDIUM,
 					DateFormat.MEDIUM, Locale.getDefault()).format(new Date()));
 
-			for (Field f : this.getClass().getDeclaredFields()) {
-				IOHandler ioH = f.getDeclaredAnnotation(IOHandler.class);
+			for (FieldData fd : FieldData.getSaveableFields(Settings.class)) {
 
-				String getter = "";
-				String comment = "";
-				String fieldName = f.getName();
-				if (ioH != null) {
-					if (!ioH.save() || Modifier.isFinal(f.getModifiers()))
-						continue;
-					getter = ioH.getter();
+				try {
+					String value = Settings.class.getMethod(fd.getGetter())
+							.invoke(this).toString();
+					if (value.equals(DEFAULT_CHAR_SET))
+						value = "DEFAULT";
 
-					if (getter.isEmpty())
-						getter = "get" + fieldName;
-					if (!comment.isEmpty())
-						comment = " #" + comment;
-					fieldName = Character.toUpperCase(fieldName.charAt(0))
-							+ ((fieldName.length() == 1) ? "" : fieldName
-									.substring(1, fieldName.length()));
+					br.write('\n' + fd.getSavedSpelling() + '=' + value
+							+ fd.getComment());
 
-					try {
-						String value = this.getClass().getMethod(getter)
-								.invoke(this).toString();
-						if (value.equals(DEFAULT_CHAR_SET))
-							value = "DEFAULT";
-
-						String name = "";
-						for (char c : fieldName.toCharArray())
-							if (Character.toUpperCase(c) == c)
-								name += ("-" + c).toLowerCase();
-							else
-								name += c;
-						if (name.startsWith("-"))
-							name = name.substring(1, name.length());
-
-						br.write('\n' + name + '=' + value + comment);
-
-					} catch (NoSuchMethodException | SecurityException
-							| IllegalAccessException
-							| InvocationTargetException e) {
-						parent.printError(null, e, false);
-					}
+				} catch (NoSuchMethodException | SecurityException
+						| IllegalAccessException | InvocationTargetException e) {
+					parent.printError(null, e, false);
 				}
-
 			}
+
 			br.write("\n");
 		} catch (IOException e) {
 			parent.printError(null, e, false);
@@ -695,104 +671,73 @@ public class Settings {
 
 				String line;
 				while ((line = br.readLine()) != null) {
+
 					if (line.indexOf('#') != -1)
 						line = line.substring(0, line.indexOf('#'));
-					if (!line.startsWith("#") && line.split("=").length == 2) {
+					if (line.split("=").length == 2) {
 						line = line.trim();
 						String value = line.split("=")[1];
-						String name = "";
-						{
-							boolean isHump = true;
 
-							for (char c : line.split("=")[0].toCharArray())
-								if (isHump) {
-									name += Character.toUpperCase(c);
-									isHump = false;
-								} else if (c == '-')
-									isHump = true;
-								else
-									name += c;
-						}
+						
 
-						String setter = "";
 						try {
-							String tmpName = Character.toLowerCase(name
-									.charAt(0))
-									+ ((name.length() == 1) ? "" : name
-											.substring(1, name.length()));
+							
+							FieldData fd  = FieldData.getBySavedSpelling(line.split("=")[0], Settings.class);
+							
+							try {
+								int i = 0;
+								double d = 0.0;
+								boolean b = false;
 
-							Field f = this.getClass().getDeclaredField(tmpName);
+								Class<?> cla = null;
 
-							IOHandler ioH = f
-									.getDeclaredAnnotation(IOHandler.class);
+								if (value.equalsIgnoreCase("true")) {
+									b = true;
+									cla = boolean.class;
+								} else if (value.equalsIgnoreCase("false"))
+									cla = boolean.class;
+								else if (value.contains(".")) {
+									d = Double.parseDouble(value);
+									cla = double.class;
+								} else {
+									i = Integer.parseInt(value);
+									cla = int.class;
+								}
 
-							if (!ioH.load()
-									|| Modifier.isFinal(f.getModifiers()))
-								continue;
+								try {
 
-							setter = ioH.setter();
+									Method m = Settings.class.getMethod(
+											fd.getSetter(), cla);
 
-							if (setter.isEmpty() && !ioH.getter().isEmpty())
-								if (ioH.getter().charAt(0) == 'g')
-									setter = 's' + ioH.getter().substring(1,
-											ioH.getter().length());
+									if (cla.equals(boolean.class))
+										m.invoke(this, b);
+									else if (cla.equals(int.class))
+										m.invoke(this, i);
+									else
+										m.invoke(this, d);
 
+								} catch (NoSuchMethodException
+										| SecurityException
+										| InvocationTargetException
+										| IllegalAccessException e) {
+									parent.printError(null, e, false);
+								}
+
+							} catch (NumberFormatException isStringOrUnknownType) {
+								try {
+									this.getClass()
+											.getMethod(fd.getSetter(), String.class)
+											.invoke(this, value);
+
+								} catch (NoSuchMethodException
+										| SecurityException
+										| InvocationTargetException
+										| IllegalAccessException e) {
+									parent.printError(null, e, false);
+								}
+							}
 						} catch (NoSuchFieldException e) {
-							parent.printError("Could not find Field '" + name
-									+ "'!", e, false);
-						}
-
-						if (setter.isEmpty())
-							setter = "set" + name;
-
-						try {
-							int i = 0;
-							double d = 0.0;
-							boolean b = false;
-
-							Class<?> cla = null;
-
-							if (value.equalsIgnoreCase("true")) {
-								b = true;
-								cla = boolean.class;
-							} else if (value.equalsIgnoreCase("false"))
-								cla = boolean.class;
-							else if (value.contains(".")) {
-								d = Double.parseDouble(value);
-								cla = double.class;
-							} else {
-								i = Integer.parseInt(value);
-								cla = int.class;
-							}
-
-							try {
-
-								Method m = this.getClass().getMethod(setter,
-										cla);
-
-								if (cla.equals(boolean.class))
-									m.invoke(this, b);
-								else if (cla.equals(int.class))
-									m.invoke(this, i);
-								else
-									m.invoke(this, d);
-
-							} catch (NoSuchMethodException | SecurityException
-									| InvocationTargetException
-									| IllegalAccessException e) {
-								parent.printError(null, e, false);
-							}
-
-						} catch (NumberFormatException isStringOrUnknownType) {
-							try {
-								this.getClass().getMethod(setter, String.class)
-										.invoke(this, value);
-
-							} catch (NoSuchMethodException | SecurityException
-									| InvocationTargetException
-									| IllegalAccessException e) {
-								parent.printError(null, e, false);
-							}
+							parent.printError("Couldn't load value:", e, false);
 						}
 					}
 				}
@@ -1004,6 +949,148 @@ public class Settings {
 		 * Comment that will be written behind the saved field value.
 		 */
 		String comment() default "";
+	}
+
+	public static class FieldData implements Comparable<FieldData> {
+
+		private Field field;
+
+		private String getter;
+		private String setter;
+		private String comment;
+
+		private boolean accessible;
+		private boolean loadable;
+		private boolean saveable;
+
+		public FieldData(Field field) {
+			this(field, field.getDeclaredAnnotation(IOHandler.class));
+		}
+
+		public FieldData(Field field, IOHandler ioh) {
+			this.field = field;
+
+			accessible = !Modifier.isFinal(field.getModifiers());
+
+			if (ioh != null) {
+				getter = ioh.getter();
+				setter = ioh.setter();
+				comment = ((!ioh.comment().isEmpty()) ? " #" + ioh.comment()
+						: "");
+
+				loadable = ioh.load() && accessible;
+				saveable = ioh.save() && accessible;
+			} else {
+
+				String fieldName = Character.toUpperCase(field.getName()
+						.charAt(0))
+						+ field.getName()
+								.substring(1, field.getName().length());
+				getter = "get" + fieldName;
+				setter = "set" + fieldName;
+				comment = "";
+
+				loadable = accessible;
+				saveable = accessible;
+			}
+		}
+
+		public Field getField() {
+			return field;
+		}
+
+		public String getGetter() {
+			return getter;
+		}
+
+		public String getSetter() {
+			return setter;
+		}
+
+		public String getComment() {
+			return comment;
+		}
+
+		public boolean isLoadable() {
+			return loadable;
+		}
+
+		public boolean isSaveable() {
+			return saveable;
+		}
+
+		public boolean isAccessible() {
+			return accessible;
+		}
+
+		/**
+		 * Compares the names.
+		 */
+		@Override
+		public int compareTo(FieldData o) {
+			return this.field.getName().compareTo(o.field.getName());
+		}
+
+		public String getSavedSpelling() {
+			String name = "", fieldName = field.getName();
+			for (char c : fieldName.toCharArray())
+				if (Character.toUpperCase(c) == c)
+					name += ("-" + c).toLowerCase();
+				else
+					name += c;
+			if (name.startsWith("-"))
+				name = name.substring(1, name.length());
+
+			return name;
+		}
+
+		public static List<FieldData> getAccessibleFields(
+				Class<? extends Object> clazz) {
+			ArrayList<FieldData> list = new ArrayList<FieldData>();
+
+			for (Field f : clazz.getDeclaredFields()) {
+				FieldData fd = new FieldData(f);
+				if (fd.isAccessible())
+					list.add(fd);
+			}
+			Collections.sort(list);
+			return list;
+		}
+
+		public static List<FieldData> getSaveableFields(Class<?> clazz) {
+			ArrayList<FieldData> list = new ArrayList<FieldData>();
+
+			for (Field f : clazz.getDeclaredFields()) {
+				FieldData fd = new FieldData(f);
+				if (fd.isSaveable())
+					list.add(fd);
+			}
+			Collections.sort(list);
+			return list;
+		}
+
+		public static List<FieldData> getLoadableFields(Class<?> clazz) {
+			ArrayList<FieldData> list = new ArrayList<FieldData>();
+
+			for (Field f : clazz.getDeclaredFields()) {
+				FieldData fd = new FieldData(f);
+				if (fd.isLoadable())
+					list.add(fd);
+			}
+			Collections.sort(list);
+			return list;
+		}
+
+		public static FieldData getBySavedSpelling(String savedSpelling,
+				Class<?> clazz) throws NoSuchFieldException {
+			List<FieldData> list = FieldData.getAccessibleFields(clazz);
+
+			for (FieldData fd : list)
+				if (fd.getSavedSpelling().equals(savedSpelling))
+					return fd;
+			throw new NoSuchFieldException("Field with save name '"
+					+ savedSpelling + "' is unknown.");
+		}
 	}
 
 }
