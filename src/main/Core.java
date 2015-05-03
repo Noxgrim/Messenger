@@ -12,6 +12,7 @@ import userInterface.UserInterface;
 import connection.Client;
 import connection.Server;
 import database.Database;
+import exceptions.DBException;
 
 /**
  * The Core class. <br>
@@ -65,9 +66,8 @@ public class Core {
 		
 		
 		settings = new Settings(this);
-		
 		if (db == null)
-			db = new Database();
+			db = new Database(settings.getDbLocation());
 
 		ui = (this.settings.getGuiMode()) ? new GraphicalUserIterface(this)
 				: new TerminalUserInterface(this);
@@ -212,7 +212,11 @@ public class Core {
 	 *            the exit status.
 	 */
 	public void shutdown(int status) {
-		db.close();
+		try {
+			db.close();
+		} catch (DBException e1) {
+			printError("Couldn't close Database.", e1, false);
+		}
 
 		try {
 			server.close();
@@ -225,7 +229,7 @@ public class Core {
 
 		System.exit(status);
 
-	}
+  }
 
 	/**
 	 * The {@code main} method.<br>

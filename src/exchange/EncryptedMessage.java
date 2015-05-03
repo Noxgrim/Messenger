@@ -42,7 +42,8 @@ public class EncryptedMessage implements Message {
 
   /**
    * @return the formatted representation of this Encrypted Message. <br>
-   * <pre>
+   * 
+   *         <pre>
    * session key + (delimiter) + encrypted content
    * </pre>
    */
@@ -60,5 +61,11 @@ public class EncryptedMessage implements Message {
       encrypted = m.group(2);
     } else
       throw new FormatException("Illegal EncryptedMessage format: '" + formattedMsgString + "'");
+  }
+
+  @Override
+  public CommandMessage toCommandMessage() throws FormatException {
+    // TODO Auto-generated method stub
+    return null;
   }
 }

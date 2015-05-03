@@ -14,19 +14,19 @@ public interface Message {
    *        to encrypt the Message.
    * @return the encrypted representation of this Message.
    */
-  public EncryptedMessage toEncryptedMessge(Contact forContact);
+  public EncryptedMessage toEncryptedMessge(Contact forContact) throws FormatException;
 
   /**
    * @return the <b>not</b> encrypted representation of this Message.
    */
-  public InternalMessage toInternalMessage();
+  public InternalMessage toInternalMessage() throws FormatException;
 
   /**
    * @return the command form of this Message. While conversion the first word will be interpreted
    *         as command name and the following ones as arguments. If the Message starts with a '/'
    *         the character will be removed.
    */
-  public CommandMessage toCommandMessage();
+  public CommandMessage toCommandMessage() throws FormatException;
 
 
   /**
