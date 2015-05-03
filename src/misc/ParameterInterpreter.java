@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import main.Core;
+import misc.Settings.FieldData;
 
 /**
  * Interprets given Parameters.
@@ -193,6 +194,19 @@ public class ParameterInterpreter {
      * Invokes a parameter with the given arguments.
      */
     abstract public void invoke(String[] args);
+  }
+  
+  private static void initSettingsParameters(Core c, Settings s) {
+    
+    for (FieldData fd :  FieldData.getAccessibleFields(Settings.class))
+      parameters.add(new Parameter(fd.getSavedSpelling(), '\0', "Changes the corresponding setting.", 1, 1, false) {
+        
+        @Override
+        public void invoke(String[] args) {
+          // TODO Auto-generated method stub
+          
+        }
+      });
   }
 
   private static void initDefaultParameters(Core c, Settings s) {
