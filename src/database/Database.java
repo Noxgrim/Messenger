@@ -38,6 +38,9 @@ import persons.User;
  * | id | name | uuid | private_key | public_key |
  * Conversations:
  * | id | name | uuid | participants_uuids | host |
+ * (If the Conversation is a HostConversation, participants_uuids contains a list of the 
+ * participants' UUIDs and host is 1 (->true). If it is a GuestConversation, it contains the UUID
+ * of the host and host is 0 (->false).)
  * @author G.
  */
 public class Database implements AutoCloseable {
@@ -277,25 +280,25 @@ public class Database implements AutoCloseable {
   }
   
   /**
-   * Add <code>Conversation</code> to the database.
+   * Add <code>HostConversation</code> to the database.
    * @param c
-   *   <code>Conversation</code>
+   *   <code>HostConversation</code>
    * @return
    * @throws DBException
    */
-  public void addConversation(Conversation c) throws DBException {
+  public void addConversation(HostConversation c) throws DBException {
     //Conversations:
     //| id | name | uuid | participants_uuids | host |
     EscapedString name = new EscapedString(c.getName());
     EscapedString uuid = new EscapedString(c.getUUID());
+    final int host = 1;
     Blob participants_uuids;
     try {
       participants_uuids = getSerializedBlob((Serializable) c.getParticipantsIds());
     } catch (SQLException e) {
-      throw new DBException("Adding conversation failed (serializing participants' ids failed):"
+      throw new DBException("Adding conversation failed (serializing participants' IDs failed):"
           +e.getMessage());
     }
-    int host = c.isHost() ? 1 : 0;
     String sql = "INSERT INTO "+CONVERSATIONS_TABLE+"(name,uuid,participants_uuids,host) VALUES ("
         + name.toQuotedString() + "," + uuid.toQuotedString()+ ",?,"
         + host + ");";
@@ -314,6 +317,36 @@ public class Database implements AutoCloseable {
   }
   
   /**
+   * Add <code>GuestConversation</code> to the database.
+   * @param c
+   *   <code>GuestConversation</code>
+   * @return
+   * @throws DBException
+   */
+  public void addConversation(GuestConversation c) throws DBException {
+  //Conversations:
+    //| id | name | uuid | participants_uuids | host |
+    EscapedString name = new EscapedString(c.getName());
+    EscapedString uuid = new EscapedString(c.getUUID());
+    final int host = 0;
+    EscapedString host_uuid = new EscapedString(c.getHost().getUUID());
+    String sql = "INSERT INTO "+CONVERSATIONS_TABLE+"(name,uuid,participants_uuids,host) VALUES ("
+        + name.toQuotedString() + "," + uuid.toQuotedString()+ ","+host_uuid.toQuotedString()+","
+        + host + ");";
+    try (Statement stmt = conn.prepareStatement(sql);) {
+      ResultSet rs = stmt.executeQuery("SELECT id FROM "+CONVERSATIONS_TABLE+" WHERE uuid = "
+          + uuid.toQuotedString()+";");
+      if (rs.next()) {
+        throw new DBException("The UUID of the conversation already exists within the database.");
+      }
+      rs.close();
+      stmt.executeUpdate(sql);
+    } catch (SQLException e) {
+      throw new DBException("Adding conversation failed: "+e.getMessage());
+    }
+  }
+  
+  /**
    * Get all <code>Conversation</code>s in the database.
    * @return
    *   <code>List</code> of <code>Conversation</code>s
@@ -324,7 +357,7 @@ public class Database implements AutoCloseable {
    */
   @SuppressWarnings("unchecked")
   public List<Conversation> getConversations() throws DBException {
-  //Conversations:
+    //Conversations:
     //| id | name | uuid | participants_uuids | host |
     try (Statement stmt = conn.createStatement();) {
       LinkedList<Conversation> results = new LinkedList<Conversation>();
@@ -333,19 +366,23 @@ public class Database implements AutoCloseable {
       while(rs.next()) {
         String name = EscapedString.unescape(rs.getString("name"));
         String uuid = EscapedString.unescape(rs.getString("uuid"));
-        Object participants_uuids_obj = getObjFromSerializedBlob(rs.getBlob("participants_uuids"));
-        LinkedList<String> participants_uuids;
-        if (participants_uuids_obj instanceof LinkedList<?>) {
-          for (Object o : (LinkedList<?>)participants_uuids_obj)
-            assert o instanceof String: "Fatal error while reading the database: UUID not a string";
+        boolean host = rs.getInt("host") == 0 ? false : true;
+        if (host) {
+          Object participants_uuids_obj = getObjFromSerializedBlob(rs.getBlob("participants_uuids"));
+          LinkedList<String> participants_uuids;
+          if (participants_uuids_obj instanceof LinkedList<?>) {
+            for (Object o : (LinkedList<?>)participants_uuids_obj)
+              assert o instanceof String: "Fatal error while reading the database: UUID not a string";
+          } else {
+            throw new AssertionError("Blob participants_uuids does not represent a LinkedList");
+          }
+          participants_uuids = (LinkedList<String>)participants_uuids_obj;
+          results.add(new HostConversation(uuid, name, participants_uuids));
         } else {
-          throw new AssertionError("Blob participants_uuids does not represent a LinkedList");
-        }
-        participants_uuids = (LinkedList<String>)participants_uuids_obj;
-        boolean host = rs.getInt("host") == 1 ? true : false;
-        results.add(host ? new HostConversation(uuid, name, participants_uuids) :
-          new GuestConversation(uuid, name, participants_uuids));
-      }
+            String host_uuid = EscapedString.unescape(rs.getString("participants_uuids"));
+            results.add(new GuestConversation(getContact(host_uuid), uuid, name));
+        } //end if(host)
+      } //end while
       return results;
     } catch (SQLException e) {
       throw new DBException("Retrieving conversations from the database failed: "+e.getMessage());
@@ -373,21 +410,21 @@ public class Database implements AutoCloseable {
                            +"(getConversation(String))"; 
         String name = EscapedString.unescape(rs.getString("name"));
         String uuid = EscapedString.unescape(rs.getString("uuid"));
-        @SuppressWarnings("unchecked")
-        List<String> participants_uuids = (LinkedList<String>)
-            getObjFromSerializedBlob(rs.getBlob("participants_uuids"));
-        List<Contact> participants = new LinkedList<>();
-        for (String participant_uuid : participants_uuids) {
-            participants.add(getContact(participant_uuid));
-        }
-        boolean host = rs.getInt("host") == 1 ? true : false;
+        boolean host = rs.getInt("host") == 0 ? false : true;
         if (host) {
+          @SuppressWarnings("unchecked")
+          List<String> participants_uuids = (LinkedList<String>)
+              getObjFromSerializedBlob(rs.getBlob("participants_uuids"));
+          List<Contact> participants = new LinkedList<>();
+          for (String participant_uuid : participants_uuids) {
+              participants.add(getContact(participant_uuid));
+          }
           return new HostConversation(participants, uuid, name);
-        } else {
-          //TODO maybe change this; I just assume that the first ID will be the host
-          return new GuestConversation(participants.get(0), uuid, name);
+        } else { //if(host)
+          String host_uuid = EscapedString.unescape(rs.getString("participants_uuids"));
+          return new GuestConversation(getContact(host_uuid), uuid, name);
         }
-      }
+      } //end while
     } catch (SQLException e) {
       throw new DBException(e.getMessage());
     }
