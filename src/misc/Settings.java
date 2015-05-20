@@ -49,7 +49,6 @@ import exceptions.FormatException;
  */
 public class Settings {
   /** The parent {@code Core} object */
-  @IOHandler(save = false, load = false)
   private Core parent;
 
   /**
@@ -65,14 +64,19 @@ public class Settings {
   private final char delimiter = '\u001D';
 
   /** The message length limit in characters. */
+  @IOHandler
   private int msgLenLimit = 4096;
   /** The header length limit in characters. */
+  @IOHandler
   private int headerLenLimit = 256;
   /** The nickname length limit in characters. */
+  @IOHandler
   private int nickLenLimit = 64;
   /** The length of the generated session key in characters. */
+  @IOHandler
   private int sessionKeyLen = 16;
   /** The socket timeout time in milliseconds. */
+  @IOHandler
   private int connectionTimeout = 1000;
 
   /**
@@ -96,21 +100,25 @@ public class Settings {
   /**
    * The custom char set. If {@code "DEAFULT"} the {@code DEFAULT} char set will be loaded.
    */
+  @IOHandler
   private String charSet = null;
   /** The default char set. */
   private static final String DEFAULT_CHAR_SET =
       "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ!\"�$%&/()=?\\+#-.,*'_:;~";
 
   /** The nickname of the user. */
+  @IOHandler
   private String ownNick = null;
   @IOHandler(load = false, comment = "Currrently unused.")
   private String host = null;
   /**
    * The port of the internal server.
    */
+  @IOHandler
   private int port = 1337;
 
   /** Path to the SQLite database file. */
+  @IOHandler
   private String dbLocation;
 
   /**
@@ -539,8 +547,9 @@ public class Settings {
    * Saves the settings in a configuration file. If such a file does not exist it will be created.<br>
    * <br>
    * 
-   * This method tries to save a field by invoking the corresponding <code>getter</code>-method. The
-   * default getter name will be created with the following syntax:
+   * This method tries to save a field (with {@link IOHandler}-annotation) by invoking the
+   * corresponding <code>getter</code>-method. The default getter name will be created with the
+   * following syntax:
    * 
    * <pre>
    * 'get' + field name
@@ -593,8 +602,9 @@ public class Settings {
    * values will be loaded.<br>
    * <br>
    * 
-   * This method tries to load a field by invoking the corresponding <code>setter</code>-method. The
-   * default setter name will be created with the following syntax:
+   * This method tries to load a field (with {@link IOHandler}-annotation) by invoking the
+   * corresponding <code>setter</code>-method. The default setter name will be created with the
+   * following syntax:
    * 
    * <pre>
    * 'set' + field name
@@ -626,60 +636,17 @@ public class Settings {
             line = line.substring(0, line.indexOf('#'));
           if (line.split("=").length == 2) {
             line = line.trim();
-            String value = line.split("=")[1];
-
 
 
             try {
 
               FieldData fd = FieldData.getBySavedSpelling(line.split("=")[0], Settings.class);
 
-              try {
-                int i = 0;
-                double d = 0.0;
-                boolean b = false;
+              fd.invoke(line.split("=")[1], Settings.class);
 
-                Class<?> cla = null;
 
-                if (value.equalsIgnoreCase("true")) {
-                  b = true;
-                  cla = boolean.class;
-                } else if (value.equalsIgnoreCase("false"))
-                  cla = boolean.class;
-                else if (value.contains(".")) {
-                  d = Double.parseDouble(value);
-                  cla = double.class;
-                } else {
-                  i = Integer.parseInt(value);
-                  cla = int.class;
-                }
-
-                try {
-
-                  Method m = Settings.class.getMethod(fd.getSetter(), cla);
-
-                  if (cla.equals(boolean.class))
-                    m.invoke(this, b);
-                  else if (cla.equals(int.class))
-                    m.invoke(this, i);
-                  else
-                    m.invoke(this, d);
-
-                } catch (NoSuchMethodException | SecurityException | InvocationTargetException
-                    | IllegalAccessException e) {
-                  parent.printError(null, e, false);
-                }
-
-              } catch (NumberFormatException isStringOrUnknownType) {
-                try {
-                  this.getClass().getMethod(fd.getSetter(), String.class).invoke(this, value);
-
-                } catch (NoSuchMethodException | SecurityException | InvocationTargetException
-                    | IllegalAccessException e) {
-                  parent.printError(null, e, false);
-                }
-              }
-            } catch (NoSuchFieldException e) {
+            } catch (NoSuchFieldException | NoSuchMethodException | SecurityException
+                | InvocationTargetException | IllegalAccessException e) {
               parent.printError("Couldn't load value:", e, false);
             }
           }
@@ -893,7 +860,7 @@ public class Settings {
     public FieldData(Field field, IOHandler ioh) {
       this.field = field;
 
-      accessible = !Modifier.isFinal(field.getModifiers());
+      accessible = !Modifier.isFinal(field.getModifiers()) && ioh != null;
 
       if (ioh != null) {
         getter = ioh.getter();
@@ -965,6 +932,58 @@ public class Settings {
       return name;
     }
 
+    public void invoke(String value, Class<?> clazz) throws NoSuchMethodException,
+        SecurityException, InvocationTargetException, IllegalAccessException {
+
+      try {
+        int i = 0;
+        double d = 0.0;
+        boolean b = false;
+
+        Class<?> cla = null;
+
+        if (value.equalsIgnoreCase("true")) {
+          b = true;
+          cla = boolean.class;
+        } else if (value.equalsIgnoreCase("false"))
+          cla = boolean.class;
+        else if (value.contains(".")) {
+          d = Double.parseDouble(value);
+          cla = double.class;
+        } else {
+          i = Integer.parseInt(value);
+          cla = int.class;
+        }
+
+        try {
+
+          Method m = clazz.getMethod(this.getSetter(), cla);
+
+          if (cla.equals(boolean.class))
+            m.invoke(this, b);
+          else if (cla.equals(int.class))
+            m.invoke(this, i);
+          else
+            m.invoke(this, d);
+
+        } catch (NoSuchMethodException | SecurityException | InvocationTargetException
+            | IllegalAccessException e) {
+          throw e;
+        }
+
+      } catch (NumberFormatException isStringOrUnknownType) {
+        try {
+          clazz.getMethod(this.getSetter(), String.class).invoke(this, value);
+
+        } catch (NoSuchMethodException | SecurityException | InvocationTargetException
+            | IllegalAccessException e) {
+          throw e;
+        }
+      }
+
+
+    }
+
     public static List<FieldData> getAccessibleFields(Class<? extends Object> clazz) {
       ArrayList<FieldData> list = new ArrayList<FieldData>();
 
@@ -1013,4 +1032,3 @@ public class Settings {
   }
 
 }
-
