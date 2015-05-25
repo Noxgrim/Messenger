@@ -620,7 +620,7 @@ public class Settings {
    * @see IOHandler
    */
   public void load() {
-
+    
     this.setToDefault(false);
 
     File file = new File(fileLocation);
@@ -642,7 +642,7 @@ public class Settings {
 
               FieldData fd = FieldData.getBySavedSpelling(line.split("=")[0], Settings.class);
 
-              fd.invoke(line.split("=")[1], Settings.class);
+              fd.invoke(line.split("=")[1], this);
 
 
             } catch (NoSuchFieldException | NoSuchMethodException | SecurityException
@@ -932,7 +932,7 @@ public class Settings {
       return name;
     }
 
-    public void invoke(String value, Class<?> clazz) throws NoSuchMethodException,
+    public void invoke(String value, Object obj) throws NoSuchMethodException,
         SecurityException, InvocationTargetException, IllegalAccessException {
 
       try {
@@ -957,14 +957,14 @@ public class Settings {
 
         try {
 
-          Method m = clazz.getMethod(this.getSetter(), cla);
+          Method m = obj.getClass().getMethod(this.getSetter(), cla);
 
           if (cla.equals(boolean.class))
-            m.invoke(this, b);
+            m.invoke(obj, b);
           else if (cla.equals(int.class))
-            m.invoke(this, i);
+            m.invoke(obj, i);
           else
-            m.invoke(this, d);
+            m.invoke(obj, d);
 
         } catch (NoSuchMethodException | SecurityException | InvocationTargetException
             | IllegalAccessException e) {
@@ -973,7 +973,7 @@ public class Settings {
 
       } catch (NumberFormatException isStringOrUnknownType) {
         try {
-          clazz.getMethod(this.getSetter(), String.class).invoke(this, value);
+          obj.getClass().getMethod(this.getSetter(), String.class).invoke(obj, value);
 
         } catch (NoSuchMethodException | SecurityException | InvocationTargetException
             | IllegalAccessException e) {
