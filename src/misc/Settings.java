@@ -104,7 +104,7 @@ public class Settings {
   private String charSet = null;
   /** The default char set. */
   private static final String DEFAULT_CHAR_SET =
-      "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ!\"�$%&/()=?\\+#-.,*'_:;~";
+      "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ!\"ï¿½$%&/()=?\\+#-.,*'_:;~";
 
   /** The nickname of the user. */
   @IOHandler

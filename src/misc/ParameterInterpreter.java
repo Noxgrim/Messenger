@@ -1,5 +1,6 @@
 package misc;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -196,6 +197,11 @@ public class ParameterInterpreter {
     abstract public void invoke(String[] args);
   }
   
+  /**
+   * Initialises the parameters that are able to overwrite the default settings.
+   * @param c The Core object.
+   * @param s The Settings Object used to overwrite its values.
+   */
   private static void initSettingsParameters(Core c, Settings s) {
     
     for (FieldData fd :  FieldData.getAccessibleFields(Settings.class))
@@ -203,7 +209,12 @@ public class ParameterInterpreter {
         
         @Override
         public void invoke(String[] args) {
-          // TODO Auto-generated method stub
+          try {
+            fd.invoke(args[0], s);
+          } catch (NoSuchMethodException | SecurityException | InvocationTargetException
+              | IllegalAccessException e) {
+            Core.getInstance().printError("Cannot overwrite setting:", e, false);
+          }
           
         }
       });

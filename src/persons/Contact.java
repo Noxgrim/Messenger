@@ -2,6 +2,7 @@ package persons;
 
 import java.net.InetSocketAddress;
 
+import exceptions.DBException;
 import main.Core;
 
 
@@ -33,8 +34,8 @@ public class Contact {
    * Gets a Contact from the Database.
    * @param uuid 
    */
-  public static Contact getContact(String uuid) {
-    return null; //TODO Database
+  public static Contact getContact(String uuid) throws DBException {
+      return Core.getInstance().getDatabase().getContact(uuid);
   }
 
   public String getNickname() {
@@ -81,7 +82,4 @@ public class Contact {
       return ((Contact) obj).uuid.equals(uuid);
     return false;
   }
-
-
-
 }
