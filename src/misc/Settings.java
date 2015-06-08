@@ -14,6 +14,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -620,7 +622,7 @@ public class Settings {
    * @see IOHandler
    */
   public void load() {
-    
+
     this.setToDefault(false);
 
     File file = new File(fileLocation);
@@ -933,53 +935,47 @@ public class Settings {
     }
 
     public void invoke(String value, Object obj) throws NoSuchMethodException,
-        SecurityException, InvocationTargetException, IllegalAccessException {
+        IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+        SecurityException, NumberFormatException {
 
-      try {
-        int i = 0;
-        double d = 0.0;
-        boolean b = false;
+      Class<?> paramType = null;
 
-        Class<?> cla = null;
+      for (Method m : obj.getClass().getDeclaredMethods())
+        if (m.getName().equalsIgnoreCase(this.getSetter()) && m.getParameterTypes().length == 1)
+          paramType = m.getParameterTypes()[0];
 
-        if (value.equalsIgnoreCase("true")) {
-          b = true;
-          cla = boolean.class;
-        } else if (value.equalsIgnoreCase("false"))
-          cla = boolean.class;
-        else if (value.contains(".")) {
-          d = Double.parseDouble(value);
-          cla = double.class;
-        } else {
-          i = Integer.parseInt(value);
-          cla = int.class;
-        }
+      if (paramType == null)
+        throw new NoSuchMethodException("Couldn't find setter: " + this.getField().getName());
 
-        try {
 
-          Method m = obj.getClass().getMethod(this.getSetter(), cla);
+      Object arg = null;
 
-          if (cla.equals(boolean.class))
-            m.invoke(obj, b);
-          else if (cla.equals(int.class))
-            m.invoke(obj, i);
-          else
-            m.invoke(obj, d);
+      if (paramType == boolean.class)
+        arg = Boolean.parseBoolean(value);
 
-        } catch (NoSuchMethodException | SecurityException | InvocationTargetException
-            | IllegalAccessException e) {
-          throw e;
-        }
+      else if (paramType == byte.class)
+        arg = Byte.parseByte(value);
+      else if (paramType == int.class)
+        arg = Integer.parseInt(value);
+      else if (paramType == long.class)
+        arg = Long.parseLong(value);
+      else if (paramType == BigInteger.class)
+        arg = new BigInteger(value);
 
-      } catch (NumberFormatException isStringOrUnknownType) {
-        try {
-          obj.getClass().getMethod(this.getSetter(), String.class).invoke(obj, value);
+      else if (paramType == float.class)
+        arg = Float.parseFloat(value);
+      else if (paramType == double.class)
+        arg = Double.parseDouble(value);
+      else if (paramType == BigDecimal.class)
+        arg = new BigDecimal(value);
+      else if (paramType == String.class)
+        arg = value;
 
-        } catch (NoSuchMethodException | SecurityException | InvocationTargetException
-            | IllegalAccessException e) {
-          throw e;
-        }
-      }
+      else
+        throw new IllegalArgumentException("Unknown Argument type: " + setter + "()");
+
+
+      obj.getClass().getDeclaredMethod(setter, paramType).invoke(obj, arg);
 
 
     }
