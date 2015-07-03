@@ -52,7 +52,7 @@ public class Core {
 		try {
 			init(arguments);
 		} catch (Throwable t) {
-			printError("An fatal error occurred while initialising the program: ", t, true);
+			printError("A fatal error occurred while initialising the program: ", t, true);
 		}
 
 	}
@@ -66,6 +66,7 @@ public class Core {
 		
 		
 		settings = new Settings(this);
+		System.exit(0);
 		if (db == null)
 			db = new Database(settings.getDbLocation());
 
