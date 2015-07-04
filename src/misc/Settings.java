@@ -24,8 +24,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import org.sqlite.SQLiteConfig.Pragma;
-
 import main.Core;
 import exceptions.FormatException;
 
@@ -55,10 +53,11 @@ public class Settings {
   /** The parent {@code Core} object */
   private Core parent;
 
+  
+  
   /**
    * The location of the configuration file. Can be set via Command line arguments.
    */
-  @IOHandler(save = false, load = false)
   private String fileLocation;
 
   /**
@@ -68,61 +67,61 @@ public class Settings {
   private final char delimiter = '\u001D';
 
   /** The message length limit in characters. */
-  @IOHandler
+  @Data
   private int msgLenLimit = 4096;
   /** The header length limit in characters. */
-  @IOHandler
+  @Data
   private int headerLenLimit = 256;
   /** The nickname length limit in characters. */
-  @IOHandler
+  @Data
   private int nickLenLimit = 64;
   /** The length of the generated session key in characters. */
-  @IOHandler
+  @Data
   private int sessionKeyLen = 16;
   /** The socket timeout time in milliseconds. */
-  @IOHandler
+  @Data
   private int connectionTimeout = 1000;
 
   /**
    * The boolean that determines if the program starts in terminal or GUI mode.
    */
-  @IOHandler(getter = "getGuiMode")
+  @Data(getter = "getGuiMode", setter = "setGuiMode")
   private boolean gui = false;
   /** The boolean that determines if exceptions will be printed. */
-  @IOHandler(getter = "getPrintExceptions")
+  @Data(getter = "getPrintExceptions", setter = "setPrintExceptions")
   private boolean exceptions = false;
   /**
    * The boolean that determines if debug messages will be printed. Can be set via Command line
    * arguments.
    */
-  @IOHandler(save = false, load = false)
+  @Data(save = false, load = false)
   private boolean debug = false;
   /** The boolean that determines if colors will be shown. */
-  @IOHandler(getter = "getColorShown", setter = "setColorShown")
+  @Data(getter = "getColorShown", setter = "setColorShown")
   private boolean color = true;
 
   /**
    * The custom char set. If {@code "DEAFULT"} the {@code DEFAULT} char set will be loaded.
    */
-  @IOHandler
+  @Data
   private String charSet = null;
   /** The default char set. */
   private static final String DEFAULT_CHAR_SET =
       "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ!\"ï¿½$%&/()=?\\+#-.,*'_:;~";
 
   /** The nickname of the user. */
-  @IOHandler
+  @Data
   private String ownNick = null;
-  @IOHandler(load = false, comment = "Currrently unused.")
+  @Data(load = false, comment = "Currrently unused.")
   private String host = null;
   /**
    * The port of the internal server.
    */
-  @IOHandler
+  @Data
   private int port = 1337;
 
   /** Path to the SQLite database file. */
-  @IOHandler
+  @Data
   private String dbLocation;
 
   /**
@@ -132,7 +131,7 @@ public class Settings {
    * @param core The parent {@code Core} object.
    */
   public Settings(Core core) {
-    this(core, "load", "." + File.separatorChar + "data" + File.separatorChar + "messenger.cfg");
+    this(core, "load", "messenger.cfg");
   }
 
   /**
@@ -456,7 +455,7 @@ public class Settings {
     }
     File testFile = new File(newLocation);
     if (!testFile.isFile() || !testFile.canRead() || !testFile.canWrite()) {
-      throw new IllegalArgumentException("Specified location is no file or not readable/writable.");
+      throw new IllegalArgumentException("Specified location (" + newLocation + ") is no file or not readable/writable.");
     }
     dbLocation = newLocation;
   }
@@ -552,7 +551,7 @@ public class Settings {
    * Saves the settings in a configuration file. If such a file does not exist it will be created.<br>
    * <br>
    * 
-   * This method tries to save a field (with {@link IOHandler}-annotation) by invoking the
+   * This method tries to save a field (with {@link Data}-annotation) by invoking the
    * corresponding <code>getter</code>-method. The default getter name will be created with the
    * following syntax:
    * 
@@ -561,14 +560,14 @@ public class Settings {
    * </pre>
    * 
    * If you want to avoid the saving of a field you can use the <code>save</code> value of
-   * {@link IOHandler}, If your field has a getter but it has a slightly different name as the
+   * {@link Data}, If your field has a getter but it has a slightly different name as the
    * default creation syntax you can specify it with the <code>getter</code> value of
-   * {@link IOHandler}. This value has to be the exact name of the method (So it will not just
+   * {@link Data}. This value has to be the exact name of the method (So it will not just
    * replace <code>field name</code> in the creation syntax.) Also, a comment will be saved behind
    * the value if <code>comment</code> is specified.<br>
    * <code>final</code> fields wont be saved.
    * 
-   * @see IOHandler
+   * @see Data
    */
   public void save() {
 
@@ -606,7 +605,7 @@ public class Settings {
    * values will be loaded.<br>
    * <br>
    * 
-   * This method tries to load a field (with {@link IOHandler}-annotation) by invoking the
+   * This method tries to load a field (with {@link Data}-annotation) by invoking the
    * corresponding <code>setter</code>-method. The default setter name will be created with the
    * following syntax:
    * 
@@ -615,13 +614,13 @@ public class Settings {
    * </pre>
    * 
    * If you want to avoid the loading of a field you can use the <code>load</code> value of
-   * {@link IOHandler}, If your field has a setter but it has a slightly different name as the
+   * {@link Data}, If your field has a setter but it has a slightly different name as the
    * default creation syntax you can specify it with the <code>setter</code> value of
-   * {@link IOHandler}. This value has to be the exact name of the method (So it will not just
+   * {@link Data}. This value has to be the exact name of the method (So it will not just
    * replace <code>field name</code> in the creation syntax.)<br>
    * <code>final</code> fields wont be loaded.
    * 
-   * @see IOHandler
+   * @see Data
    */
   public void load() {
 
@@ -825,7 +824,7 @@ public class Settings {
    */
   @Retention(RetentionPolicy.RUNTIME)
   @Target(ElementType.FIELD)
-  private @interface IOHandler {
+  private @interface Data {
     /** Load this field. */
     boolean load() default true;
 
@@ -857,10 +856,10 @@ public class Settings {
     private boolean saveable;
 
     public FieldData(Field field) {
-      this(field, field.getDeclaredAnnotation(IOHandler.class));
+      this(field, field.getDeclaredAnnotation(Data.class));
     }
 
-    public FieldData(Field field, IOHandler ioh) {
+    public FieldData(Field field, Data ioh) {
       this.field = field;
 
       accessible = !Modifier.isFinal(field.getModifiers()) && ioh != null;
@@ -949,13 +948,14 @@ public class Settings {
 
       Class<?> paramType = null;
 
-      for (Method m : obj.getClass().getDeclaredMethods()) 
+      for (Method m : obj.getClass().getDeclaredMethods())
         if (m.getName().equalsIgnoreCase(this.getSetter()) && m.getParameterTypes().length == 1)
-          paramType = m.getGenericParameterTypes()[0].getClass();
+          paramType = m.getParameterTypes()[0];
       
       if (paramType == null)
         throw new NoSuchMethodException("Couldn't find setter (" + this.getSetter() + "): " + this.getField().getName());
-    
+     
+
 
       Object arg = null;
 
@@ -977,9 +977,11 @@ public class Settings {
         arg = Double.parseDouble(value);
       else if (paramType == BigDecimal.class)
         arg = new BigDecimal(value);
-      else
+      else if (paramType == String.class)
         arg = value;
 
+      else
+        throw new IllegalArgumentException("Unknown Argument type (" + paramType.getName() +") for: " + setter + "()");
 
 
       obj.getClass().getDeclaredMethod(setter, paramType).invoke(obj, arg);
