@@ -24,6 +24,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import org.sqlite.SQLiteConfig.Pragma;
+
 import main.Core;
 import exceptions.FormatException;
 
@@ -96,7 +98,7 @@ public class Settings {
   @IOHandler(save = false, load = false)
   private boolean debug = false;
   /** The boolean that determines if colors will be shown. */
-  @IOHandler(getter = "getColorShown")
+  @IOHandler(getter = "getColorShown", setter = "setColorShown")
   private boolean color = true;
 
   /**
@@ -536,6 +538,7 @@ public class Settings {
     this.ownNick = "MissingNo";
     this.host = "localhost";
     this.port = 1337;
+    this.dbLocation = "." + File.separatorChar + "data" + File.separatorChar + "messengerDB.sqlite";
 
     this.charSet = "DEFAULT";
     // TODO Add generation of a new key pair.
@@ -576,7 +579,6 @@ public class Settings {
           Locale.getDefault()).format(new Date()));
 
       for (FieldData fd : FieldData.getSaveableFields(Settings.class)) {
-
         try {
           String value = Settings.class.getMethod(fd.getGetter()).invoke(this).toString();
           if (value.equals(DEFAULT_CHAR_SET))
@@ -584,9 +586,9 @@ public class Settings {
 
           br.write('\n' + fd.getSavedSpelling() + '=' + value + fd.getComment());
 
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException
-            | InvocationTargetException e) {
-          parent.printError(null, e, false);
+        } catch (Exception e) {
+          parent.printError("An Error occurred while saving \"" + fd.getField().getName() + "\"",
+              e, false);
         }
       }
 
@@ -641,7 +643,6 @@ public class Settings {
 
 
             try {
-
               FieldData fd = FieldData.getBySavedSpelling(line.split("=")[0], Settings.class);
 
               fd.invoke(line.split("=")[1], this);
@@ -864,18 +865,26 @@ public class Settings {
 
       accessible = !Modifier.isFinal(field.getModifiers()) && ioh != null;
 
+      String fieldName =
+          Character.toUpperCase(field.getName().charAt(0))
+              + field.getName().substring(1, field.getName().length());
+
       if (ioh != null) {
         getter = ioh.getter();
         setter = ioh.setter();
         comment = ((!ioh.comment().isEmpty()) ? " #" + ioh.comment() : "");
 
+        if (getter.isEmpty())
+          getter = "get" + fieldName;
+        if (setter.isEmpty())
+          setter = "set" + fieldName;
+
+
         loadable = ioh.load() && accessible;
         saveable = ioh.save() && accessible;
       } else {
 
-        String fieldName =
-            Character.toUpperCase(field.getName().charAt(0))
-                + field.getName().substring(1, field.getName().length());
+
         getter = "get" + fieldName;
         setter = "set" + fieldName;
         comment = "";
@@ -940,13 +949,17 @@ public class Settings {
 
       Class<?> paramType = null;
 
-      for (Method m : obj.getClass().getDeclaredMethods())
+      for (Method m : obj.getClass().getDeclaredMethods()) {
+       System.out.println("Method: " + m.getName());
+       for (Class<?> cl : m.getParameterTypes())
+         System.out.println("\t" + cl.getName());
         if (m.getName().equalsIgnoreCase(this.getSetter()) && m.getParameterTypes().length == 1)
-          paramType = m.getParameterTypes()[0];
-
+          paramType = m.getGenericParameterTypes()[0].getClass();
+      }
       if (paramType == null)
-        throw new NoSuchMethodException("Couldn't find setter: " + this.getField().getName());
-
+        throw new NoSuchMethodException("Couldn't find setter (" + this.getSetter() + "): " + this.getField().getName());
+      if (paramType == Class.class)
+        System.out.println("JUHAY");
 
       Object arg = null;
 
@@ -972,7 +985,7 @@ public class Settings {
         arg = value;
 
       else
-        throw new IllegalArgumentException("Unknown Argument type: " + setter + "()");
+        throw new IllegalArgumentException("Unknown Argument type (" + paramType.getName() +") for: " + setter + "()");
 
 
       obj.getClass().getDeclaredMethod(setter, paramType).invoke(obj, arg);
@@ -1018,8 +1031,8 @@ public class Settings {
 
     public static FieldData getBySavedSpelling(String savedSpelling, Class<?> clazz)
         throws NoSuchFieldException {
-      List<FieldData> list = FieldData.getAccessibleFields(clazz);
 
+      List<FieldData> list = FieldData.getAccessibleFields(clazz);
       for (FieldData fd : list)
         if (fd.getSavedSpelling().equals(savedSpelling))
           return fd;
