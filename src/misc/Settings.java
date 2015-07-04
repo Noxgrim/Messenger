@@ -949,17 +949,13 @@ public class Settings {
 
       Class<?> paramType = null;
 
-      for (Method m : obj.getClass().getDeclaredMethods()) {
-       System.out.println("Method: " + m.getName());
-       for (Class<?> cl : m.getParameterTypes())
-         System.out.println("\t" + cl.getName());
+      for (Method m : obj.getClass().getDeclaredMethods()) 
         if (m.getName().equalsIgnoreCase(this.getSetter()) && m.getParameterTypes().length == 1)
           paramType = m.getGenericParameterTypes()[0].getClass();
-      }
+      
       if (paramType == null)
         throw new NoSuchMethodException("Couldn't find setter (" + this.getSetter() + "): " + this.getField().getName());
-      if (paramType == Class.class)
-        System.out.println("JUHAY");
+    
 
       Object arg = null;
 
@@ -981,11 +977,9 @@ public class Settings {
         arg = Double.parseDouble(value);
       else if (paramType == BigDecimal.class)
         arg = new BigDecimal(value);
-      else if (paramType == String.class)
+      else
         arg = value;
 
-      else
-        throw new IllegalArgumentException("Unknown Argument type (" + paramType.getName() +") for: " + setter + "()");
 
 
       obj.getClass().getDeclaredMethod(setter, paramType).invoke(obj, arg);
