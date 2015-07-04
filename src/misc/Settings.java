@@ -132,7 +132,7 @@ public class Settings {
    * @param core The parent {@code Core} object.
    */
   public Settings(Core core) {
-    this(core, "load", "messenger.cfg");
+    this(core, "load", "." + File.separatorChar + "data" + File.separatorChar + "messenger.cfg");
   }
 
   /**
