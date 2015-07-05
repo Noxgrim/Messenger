@@ -31,14 +31,14 @@ public final class Formats {
    * Regular expression:<br>
    * <code>DELIMITER_CHAR
       + "([0-9a-f]+)" + DELIMITER_CHAR
-      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-{[0-9a-f]{12})" + DELIMITER_CHAR
-      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-{[0-9a-f]{12})" + DELIMITER_CHAR
+      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" + DELIMITER_CHAR
+      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" + DELIMITER_CHAR
       + "([01])"</code>
    */
   public static final Pattern MESSAGE_FORMAT_HEADER = Pattern.compile(DELIMITER_CHAR
       + "([0-9a-f]+)" + DELIMITER_CHAR
-      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-{[0-9a-f]{12})" + DELIMITER_CHAR
-      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-{[0-9a-f]{12})" + DELIMITER_CHAR
+      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" + DELIMITER_CHAR
+      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" + DELIMITER_CHAR
       + "([01])");
 
   /**
@@ -49,8 +49,8 @@ public final class Formats {
    * Regular expression:<br>
    * <code>DELIMITER_CHAR
       + "([0-9a-f]+)" + DELIMITER_CHAR
-      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-{[0-9a-f]{12})" + DELIMITER_CHAR
-      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-{[0-9a-f]{12})" + DELIMITER_CHAR
+      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" + DELIMITER_CHAR
+      + "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})" + DELIMITER_CHAR
       + "([01])" + DELIMITER_CHAR + "([^" + DELIMITER_CHAR + "]+)" </code>
    */
   public static final Pattern MESSAGE_FORMAT = Pattern.compile(MESSAGE_FORMAT_HEADER.toString()
