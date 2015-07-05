@@ -56,16 +56,18 @@ public final class Formats {
   public static final Pattern MESSAGE_FORMAT = Pattern.compile(MESSAGE_FORMAT_HEADER.toString()
       + DELIMITER_CHAR + MESSAGE_FORMAT_CONTENT.toString());
   /**
-   * Format of a whole <i> encrypted</i> Message:<br>
-   * Two sections connected with the <code>delimiter</code> that don't contain it. <br>
+   * Format of a whole <i>encrypted</i> Message:<br>
+   * Three sections connected with the <code>delimiter</code> that don't contain it. <br>
    * <br>
    * Regular expression:<br>
-   * <code>"([^" + DELIMITER_CHAR
+   * <code>"([^" + DELIMITER_CHAR + "]+)"
+      + DELIMITER_CHAR + "([^" + DELIMITER_CHAR
       + "]+)" + DELIMITER_CHAR + "([^" + DELIMITER_CHAR
       + "]+)"</code>
    */
   public static final Pattern MESSAGE_ENCRYPTED = Pattern.compile("([^" + DELIMITER_CHAR + "]+)"
-      + DELIMITER_CHAR + "([^" + DELIMITER_CHAR + "]+)");
+      + DELIMITER_CHAR + "([^" + DELIMITER_CHAR + "]+)" + DELIMITER_CHAR + "([^" + DELIMITER_CHAR
+      + "]+)");
 
   /**
    * Contains all special characters of a regular expression. Can be used to escape them.<br>
