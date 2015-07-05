@@ -17,12 +17,16 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
+import javax.crypto.Cipher;
 
 import main.Core;
 import exceptions.FormatException;
@@ -53,8 +57,8 @@ public class Settings {
   /** The parent {@code Core} object */
   private Core parent;
 
-  
-  
+
+
   /**
    * The location of the configuration file. Can be set via Command line arguments.
    */
@@ -75,9 +79,9 @@ public class Settings {
   /** The nickname length limit in characters. */
   @Data
   private int nickLenLimit = 64;
-  /** The length of the generated session key in characters. */
+  /** The length of the generated session key in bits. */
   @Data
-  private int sessionKeyLen = 32;
+  private int sessionKeyLen = 128;
   /** The socket timeout time in milliseconds. */
   @Data
   private int connectionTimeout = 1000;
@@ -248,12 +252,12 @@ public class Settings {
 
   /**
    * Sets the session key length limit.<br>
-   * The minimum value is {@code 8} and the default value is {@code 32}.
+   * The minimum value is {@code 8} and the default value is {@code 128}.
    * 
    * @param sessionKeyLen The session key length to be set.
    */
   public void setSessionKeyLen(int sessionKeyLen) {
-    this.sessionKeyLen = this.validateInt(sessionKeyLen, 8, 56, this.sessionKeyLen);
+    this.sessionKeyLen = this.validateInt(sessionKeyLen, 128, 128, 192, 256);
   }
 
   /**
@@ -423,7 +427,8 @@ public class Settings {
     }
     File testFile = new File(newLocation);
     if (!testFile.isFile() || !testFile.canRead() || !testFile.canWrite()) {
-      throw new IllegalArgumentException("Specified location (" + newLocation + ") is no file or not readable/writable.");
+      throw new IllegalArgumentException("Specified location (" + newLocation
+          + ") is no file or not readable/writable.");
     }
     dbLocation = newLocation;
   }
@@ -449,7 +454,7 @@ public class Settings {
    * </tr>
    * <tr>
    * <td>{@code sessionKeyLen}</td>
-   * <td> {@code 16}</td>
+   * <td> {@code 128}</td>
    * </tr>
    * <tr>
    * <td>{@code connectionTimeout}</td>
@@ -497,7 +502,7 @@ public class Settings {
     this.msgLenLimit = 4098;
     this.headerLenLimit = 256;
     this.nickLenLimit = 64;
-    this.sessionKeyLen = 32;
+    this.sessionKeyLen = 128;
     this.gui = false;
     this.exceptions = false;
     this.debug = false;
@@ -518,20 +523,19 @@ public class Settings {
    * Saves the settings in a configuration file. If such a file does not exist it will be created.<br>
    * <br>
    * 
-   * This method tries to save a field (with {@link Data}-annotation) by invoking the
-   * corresponding <code>getter</code>-method. The default getter name will be created with the
-   * following syntax:
+   * This method tries to save a field (with {@link Data}-annotation) by invoking the corresponding
+   * <code>getter</code>-method. The default getter name will be created with the following syntax:
    * 
    * <pre>
    * 'get' + field name
    * </pre>
    * 
    * If you want to avoid the saving of a field you can use the <code>save</code> value of
-   * {@link Data}, If your field has a getter but it has a slightly different name as the
-   * default creation syntax you can specify it with the <code>getter</code> value of
-   * {@link Data}. This value has to be the exact name of the method (So it will not just
-   * replace <code>field name</code> in the creation syntax.) Also, a comment will be saved behind
-   * the value if <code>comment</code> is specified.<br>
+   * {@link Data}, If your field has a getter but it has a slightly different name as the default
+   * creation syntax you can specify it with the <code>getter</code> value of {@link Data}. This
+   * value has to be the exact name of the method (So it will not just replace
+   * <code>field name</code> in the creation syntax.) Also, a comment will be saved behind the value
+   * if <code>comment</code> is specified.<br>
    * <code>final</code> fields wont be saved.
    * 
    * @see Data
@@ -570,19 +574,18 @@ public class Settings {
    * values will be loaded.<br>
    * <br>
    * 
-   * This method tries to load a field (with {@link Data}-annotation) by invoking the
-   * corresponding <code>setter</code>-method. The default setter name will be created with the
-   * following syntax:
+   * This method tries to load a field (with {@link Data}-annotation) by invoking the corresponding
+   * <code>setter</code>-method. The default setter name will be created with the following syntax:
    * 
    * <pre>
    * 'set' + field name
    * </pre>
    * 
    * If you want to avoid the loading of a field you can use the <code>load</code> value of
-   * {@link Data}, If your field has a setter but it has a slightly different name as the
-   * default creation syntax you can specify it with the <code>setter</code> value of
-   * {@link Data}. This value has to be the exact name of the method (So it will not just
-   * replace <code>field name</code> in the creation syntax.)<br>
+   * {@link Data}, If your field has a setter but it has a slightly different name as the default
+   * creation syntax you can specify it with the <code>setter</code> value of {@link Data}. This
+   * value has to be the exact name of the method (So it will not just replace
+   * <code>field name</code> in the creation syntax.)<br>
    * <code>final</code> fields wont be loaded.
    * 
    * @see Data
@@ -646,6 +649,19 @@ public class Settings {
 
     return ifInvalid;
 
+  }
+
+  private int validateInt(int i, int ifInvalid, int... possibilities) {
+    for (int j : possibilities)
+      if (i == j)
+        return i;
+    try {
+      throw new FormatException("Integer '" + i + "' isn't a valid possibility. "
+          + Arrays.toString(possibilities));
+    } catch (FormatException e) {
+      parent.printError(null, e, false);
+    }
+    return ifInvalid;
   }
 
   /**
@@ -866,10 +882,11 @@ public class Settings {
       for (Method m : obj.getClass().getDeclaredMethods())
         if (m.getName().equalsIgnoreCase(this.getSetter()) && m.getParameterTypes().length == 1)
           paramType = m.getParameterTypes()[0];
-      
+
       if (paramType == null)
-        throw new NoSuchMethodException("Couldn't find setter (" + this.getSetter() + "): " + this.getField().getName());
-     
+        throw new NoSuchMethodException("Couldn't find setter (" + this.getSetter() + "): "
+            + this.getField().getName());
+
 
 
       Object arg = null;
@@ -896,7 +913,8 @@ public class Settings {
         arg = value;
 
       else
-        throw new IllegalArgumentException("Unknown Argument type (" + paramType.getName() +") for: " + setter + "()");
+        throw new IllegalArgumentException("Unknown Argument type (" + paramType.getName()
+            + ") for: " + setter + "()");
 
 
       obj.getClass().getDeclaredMethod(setter, paramType).invoke(obj, arg);
