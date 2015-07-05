@@ -41,17 +41,6 @@ public interface Message {
    * @throws FormatException if the format of the <code>formattedMsgString</code> is invalid.
    */
   public void setFormatted(String formattedMsgString) throws FormatException;
-  
-  /**
-   * @return the UUID of the sender of this Message.
-   */
-  public String getUuidSender();
-  
-  /**
-   * Set the UUID of the sender of this Message.
-   * @param uuid the UUID to be set.
-   */
-  public void setUuidSender(String uuid);
 
 
 

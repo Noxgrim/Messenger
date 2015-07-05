@@ -2,6 +2,7 @@ package exchange;
 
 import java.util.regex.Matcher;
 
+import coversations.security.HybridCoder;
 import persons.Contact;
 import utils.Formats;
 import exceptions.FormatException;
@@ -28,6 +29,22 @@ public class EncryptedMessage implements Message {
   public EncryptedMessage(String formattedMsgString) throws FormatException {
     setFormatted(formattedMsgString);
   }
+  
+  public String getEncrypted() {
+    return encrypted;
+  }
+  
+  public void setEncrypted(String encrypted) {
+    this.encrypted = encrypted;
+  }
+  
+  public String getSessionKey() {
+    return sessionKey;
+  }
+  
+  public void setSessionKey(String sessionKey) {
+    this.sessionKey = sessionKey;
+  }
 
   @Override
   public EncryptedMessage toEncryptedMessge(Contact forContact) {
@@ -36,16 +53,15 @@ public class EncryptedMessage implements Message {
 
   @Override
   public InternalMessage toInternalMessage() {
-    // TODO Auto-generated method stub
-    return null;
+    return HybridCoder.decodeMessage(this);
   }
 
   /**
    * @return the formatted representation of this Encrypted Message. <br>
    * 
    *         <pre>
-   * session key + (delimiter) + encrypted content
-   * </pre>
+   *            session key + (delimiter) + encrypted content
+   *         </pre>
    */
   @Override
   public String getFormatted() {

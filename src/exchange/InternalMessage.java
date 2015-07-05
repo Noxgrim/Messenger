@@ -150,7 +150,6 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   /**
    * @return the UUID of the sender.
    */
-  @Override
   public String getUuidSender() {
     return uuidSender;
   }
@@ -287,7 +286,6 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    * 
    * @param uuid UUID to be set.
    */
-  @Override
   public void setUuidSender(String uuid) {
     this.uuidSender = uuid;
   }

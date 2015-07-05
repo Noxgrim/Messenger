@@ -60,14 +60,12 @@ public final class Formats {
    * Three sections connected with the <code>delimiter</code> that don't contain it. <br>
    * <br>
    * Regular expression:<br>
-   * <code>"([^" + DELIMITER_CHAR + "]+)"
-      + DELIMITER_CHAR + "([^" + DELIMITER_CHAR
+   * <code>"([^" + DELIMITER_CHAR
       + "]+)" + DELIMITER_CHAR + "([^" + DELIMITER_CHAR
       + "]+)"</code>
    */
   public static final Pattern MESSAGE_ENCRYPTED = Pattern.compile("([^" + DELIMITER_CHAR + "]+)"
-      + DELIMITER_CHAR + "([^" + DELIMITER_CHAR + "]+)" + DELIMITER_CHAR + "([^" + DELIMITER_CHAR
-      + "]+)");
+      + DELIMITER_CHAR + "([^" + DELIMITER_CHAR + "]+)");
 
   /**
    * Contains all special characters of a regular expression. Can be used to escape them.<br>
