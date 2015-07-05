@@ -100,15 +100,6 @@ public class Settings {
   @Data(getter = "getColorShown", setter = "setColorShown")
   private boolean color = true;
 
-  /**
-   * The custom char set. If {@code "DEAFULT"} the {@code DEFAULT} char set will be loaded.
-   */
-  @Data
-  private String charSet = null;
-  /** The default char set. */
-  private static final String DEFAULT_CHAR_SET =
-      "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ!\"ï¿½$%&/()=?\\+#-.,*'_:;~";
-
   /** The nickname of the user. */
   @Data
   private String ownNick = null;
@@ -358,29 +349,6 @@ public class Settings {
   }
 
   /**
-   * Gets the selected char set.
-   * 
-   * @return the selected custom char set or {@code "DEFAULT"} for the default char set.
-   */
-  public String getCharSet() {
-
-    return (this.charSet.equalsIgnoreCase("DEFAULT")) ? DEFAULT_CHAR_SET : this.charSet;
-
-  }
-
-  /**
-   * Set the char set. <br>
-   * If {@code "DEFAULT"} the {@code DEFAULT_CHAR_SET} will be selected, else the new char set will
-   * be set. A char set can only contain each character once and cannot contain one of the control
-   * characters.
-   * 
-   * @param customCharSet The char set to be set.
-   */
-  public void setCharSet(String customCharSet) {
-    this.charSet = this.validateCharSet(customCharSet);
-  }
-
-  /**
    * Gets the user's nickname.
    */
   public String getOwnNick() {
@@ -539,7 +507,6 @@ public class Settings {
     this.port = 1337;
     this.dbLocation = "." + File.separatorChar + "data" + File.separatorChar + "messengerDB.sqlite";
 
-    this.charSet = "DEFAULT";
     // TODO Add generation of a new key pair.
 
     if (save) {
@@ -580,8 +547,6 @@ public class Settings {
       for (FieldData fd : FieldData.getSaveableFields(Settings.class)) {
         try {
           String value = Settings.class.getMethod(fd.getGetter()).invoke(this).toString();
-          if (value.equals(DEFAULT_CHAR_SET))
-            value = "DEFAULT";
 
           br.write('\n' + fd.getSavedSpelling() + '=' + value + fd.getComment());
 
@@ -684,48 +649,6 @@ public class Settings {
   }
 
   /**
-   * Validates a char set.
-   * 
-   * @param customCharSet Char set to be validated.
-   * @return {@code this.charSet} if {@code customCharSet} is {@code null} or empty. Illegal
-   *         characters will be removed.
-   */
-  private String validateCharSet(String customCharSet) {
-    if (customCharSet.isEmpty() || customCharSet == null) {
-      try {
-        throw new FormatException("The new char set cannot be empty or null.");
-      } catch (FormatException e) {
-        parent.printError(null, e, false);
-      }
-      return this.charSet;
-    }
-    if (customCharSet.equalsIgnoreCase("DEFAULT") || customCharSet.equals(DEFAULT_CHAR_SET))
-      return "DEFAULT";
-    else {
-      String back = "";
-      for (char c : customCharSet.toCharArray())
-        if (back.indexOf(c) != -1 || c == this.delimiter)
-          try {
-            throw new FormatException(
-                "The new char set cannot contain one of the control characters or a character twice.");
-          } catch (FormatException e) {
-            parent.printError(null, e, false);
-          }
-        else
-          back += c;
-      if (back.isEmpty()) {
-        try {
-          throw new FormatException("The new char set cannot be empty.");
-        } catch (FormatException e) {
-          parent.printError(null, e, false);
-        }
-        return this.charSet;
-      }
-      return back;
-    }
-  }
-
-  /**
    * Validates a nickname.
    * 
    * @param nick The nickname to be validated.
@@ -783,7 +706,6 @@ public class Settings {
    */
   public void equalise(Settings with) {
 
-    this.setCharSet(with.getCharSet());
     this.setHost(with.getHost());
     this.setGuiMode(with.getGuiMode());
     this.setHeaderLenLimit(with.getHeaderLenLimit());
@@ -797,13 +719,6 @@ public class Settings {
     this.setDebugMode(with.getDebugMode());
     this.setColorShown(with.getColorShown());
 
-  }
-
-  /**
-   * Gets the default char set {@code DEFAULT_CHAR_SET}.
-   */
-  public String getDefaultCharSet() {
-    return DEFAULT_CHAR_SET;
   }
 
   /**
