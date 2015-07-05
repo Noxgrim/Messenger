@@ -1,18 +1,24 @@
 package main;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.UUID;
 
 import manager.ConversationManager;
 import manager.MessageManager;
 import misc.Settings;
+import persons.Contact;
 import persons.User;
 import userInterface.GraphicalUserIterface;
 import userInterface.TerminalUserInterface;
 import userInterface.UserInterface;
 import connection.Client;
 import connection.Server;
+import coversations.security.HybridCoder;
 import database.Database;
 import exceptions.DBException;
+import exchange.EncryptedMessage;
+import exchange.InternalMessage;
 
 /**
  * The Core class. <br>
@@ -20,7 +26,7 @@ import exceptions.DBException;
  */
 public class Core {
 	/** An instance of this object. */
-	private static Core instance;
+	public static Core instance;
 
 	/** The settings of the program. */
 	private Settings settings;
@@ -66,7 +72,12 @@ public class Core {
 		
 		
 		settings = new Settings(this);
-		System.exit(0);
+		
+		
+		
+		if (25 == 20+5)
+		return;
+
 		if (db == null)
 			db = new Database(settings.getDbLocation());
 
@@ -214,12 +225,14 @@ public class Core {
 	 */
 	public void shutdown(int status) {
 		try {
+		  if (db != null)
 			db.close();
 		} catch (DBException e1) {
 			printError("Couldn't close Database.", e1, false);
 		}
 
 		try {
+		  if (server != null)
 			server.close();
 		} catch (IOException e) {
 			Core.getInstance().getUserInterface()
@@ -241,6 +254,31 @@ public class Core {
 	 */
 	public static void main(String[] args) {
 		instance = new Core(args);
+		
+		
+		
+		try {
+		  String[] keyPiar = HybridCoder.generateKeyPair();
+	        
+		  Core.instance.user = new User(Core.instance.getSettings().getOwnNick(), UUID.randomUUID().toString(), keyPiar[1], keyPiar[0]);
+	        
+	        Contact c = new Contact("Peter", UUID.randomUUID().toString(), HybridCoder.generateKeyPair()[1], new InetSocketAddress(55648));
+	        
+	        
+	        InternalMessage im = new InternalMessage("Peter is an awesome guy!", UUID.randomUUID().toString(), c.getUUID());
+	        
+	        System.out.println(im.getFormatted() + "\n\n");
+	        
+	        EncryptedMessage em = im.toEncryptedMessge(c);
+	        
+	        System.out.println(em.getFormatted() + "\n\n");
+	        
+	        im = em.toInternalMessage();
+	        
+	        System.out.println(im.getFormatted() + "\n\n");
+		} catch (Exception e) {
+		  Core.instance.printError("An error occurred.", e, true);
+		}
 	}
 
 	/**
