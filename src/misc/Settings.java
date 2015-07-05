@@ -77,7 +77,7 @@ public class Settings {
   private int nickLenLimit = 64;
   /** The length of the generated session key in characters. */
   @Data
-  private int sessionKeyLen = 16;
+  private int sessionKeyLen = 32;
   /** The socket timeout time in milliseconds. */
   @Data
   private int connectionTimeout = 1000;
@@ -257,12 +257,12 @@ public class Settings {
 
   /**
    * Sets the session key length limit.<br>
-   * The minimum value is {@code 8} and the default value is {@code 16}.
+   * The minimum value is {@code 8} and the default value is {@code 32}.
    * 
    * @param sessionKeyLen The session key length to be set.
    */
   public void setSessionKeyLen(int sessionKeyLen) {
-    this.sessionKeyLen = this.validateInt(sessionKeyLen, 8, Integer.MAX_VALUE, this.sessionKeyLen);
+    this.sessionKeyLen = this.validateInt(sessionKeyLen, 8, 56, this.sessionKeyLen);
   }
 
   /**
@@ -529,7 +529,7 @@ public class Settings {
     this.msgLenLimit = 4098;
     this.headerLenLimit = 256;
     this.nickLenLimit = 64;
-    this.sessionKeyLen = 16;
+    this.sessionKeyLen = 32;
     this.gui = false;
     this.exceptions = false;
     this.debug = false;
