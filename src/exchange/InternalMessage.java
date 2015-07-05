@@ -1,5 +1,6 @@
 package exchange;
 
+import java.security.InvalidKeyException;
 import java.util.GregorianCalendar;
 import java.util.regex.Matcher;
 
@@ -299,12 +300,18 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   }
 
   @Override
-  public EncryptedMessage toEncryptedMessge(Contact forContact) {
+  public EncryptedMessage toEncryptedMessge(Contact forContact) throws InvalidKeyException {
     return HybridCoder.encodeMessage(this, forContact);
   }
 
   @Override
   public InternalMessage toInternalMessage() {
     return this;
+  }
+
+  @Override
+  public CommandMessage toCommandMessage() throws FormatException {
+    // TODO Auto-generated method stub
+    return null;
   }
 }

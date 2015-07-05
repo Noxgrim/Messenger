@@ -1,5 +1,6 @@
 package exchange;
 
+import java.security.InvalidKeyException;
 import java.util.regex.Matcher;
 
 import coversations.security.HybridCoder;
@@ -47,12 +48,12 @@ public class EncryptedMessage implements Message {
   }
 
   @Override
-  public EncryptedMessage toEncryptedMessge(Contact forContact) {
+  public EncryptedMessage toEncryptedMessge(Contact forContact) throws InvalidKeyException, FormatException {
     return this.toInternalMessage().toEncryptedMessge(forContact);
   }
 
   @Override
-  public InternalMessage toInternalMessage() {
+  public InternalMessage toInternalMessage() throws InvalidKeyException, FormatException {
     return HybridCoder.decodeMessage(this);
   }
 

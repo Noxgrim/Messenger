@@ -1,5 +1,7 @@
 package exchange;
 
+import java.security.InvalidKeyException;
+
 import persons.Contact;
 import exceptions.FormatException;
 
@@ -14,12 +16,12 @@ public interface Message {
    *        to encrypt the Message.
    * @return the encrypted representation of this Message.
    */
-  public EncryptedMessage toEncryptedMessge(Contact forContact) throws FormatException;
+  public EncryptedMessage toEncryptedMessge(Contact forContact) throws InvalidKeyException, FormatException;
 
   /**
    * @return the <b>not</b> encrypted representation of this Message.
    */
-  public InternalMessage toInternalMessage() throws FormatException;
+  public InternalMessage toInternalMessage() throws InvalidKeyException, FormatException;
 
   /**
    * @return the command form of this Message. While conversion the first word will be interpreted
