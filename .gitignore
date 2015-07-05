@@ -39,3 +39,5 @@ local.properties
 
 # PDT-specific
 .buildpath
+/messenger.cfg
+/data/
