@@ -17,7 +17,6 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,8 +24,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-
-import javax.crypto.Cipher;
 
 import main.Core;
 import exceptions.FormatException;
@@ -126,7 +123,7 @@ public class Settings {
    * @param core The parent {@code Core} object.
    */
   public Settings(Core core) {
-    this(core, "load", "messenger.cfg");
+    this(core, "load", "." + File.separatorChar + "data" + File.separatorChar + "messenger.cfg");
   }
 
   /**
@@ -656,8 +653,8 @@ public class Settings {
       if (i == j)
         return i;
     try {
-      throw new FormatException("Integer '" + i + "' isn't a valid possibility. "
-          + Arrays.toString(possibilities));
+      throw new FormatException("Integer '" + i + "' isn't a valid possibility. (Possible values:"
+          + Arrays.toString(possibilities) + ")");
     } catch (FormatException e) {
       parent.printError(null, e, false);
     }
