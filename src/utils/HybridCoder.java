@@ -34,9 +34,9 @@ public class HybridCoder {
   private static KeyPairGenerator kpg;
 
   private static KeyFactory kf;
-  
+
   private static Cipher aes, rsa;
-  
+
   static String asy;
 
   static {
@@ -58,7 +58,7 @@ public class HybridCoder {
 
 
       kf = KeyFactory.getInstance("RSA");
-      
+
 
       aes = Cipher.getInstance("AES");
       rsa = Cipher.getInstance("RSA");
@@ -71,41 +71,37 @@ public class HybridCoder {
 
   /**
    * Generates a new asynchronous key pair.<br>
-   * <pre>[ private key, public key ]</pre>
+   * 
+   * <pre>
+   * [ private key, public key ]
+   * </pre>
    * 
    * @return a asynchronous key pair.
    */
   public static String[] generateKeyPair() {
     KeyPair kp = kpg.genKeyPair();
-    return new String[]{keyToString(kp.getPrivate()), keyToString(kp.getPublic())};
+    return new String[] {keyToString(kp.getPrivate()), keyToString(kp.getPublic())};
+  }
+
+  public static String generateSecretKey() {
+    return keyToString(kg.generateKey());
   }
 
   public static EncryptedMessage encodeMessage(InternalMessage m, Contact forContact)
       throws InvalidKeyException {
-    SecretKey session = kg.generateKey();
 
-
-    aes.init(Cipher.ENCRYPT_MODE, session);
-    try {
-      rsa.init(Cipher.ENCRYPT_MODE, getPublicKeyFromString(forContact.getPublicKey()));
-    } catch (InvalidKeySpecException e) {
-      throw new InvalidKeyException("Invalid key.", e);
-    }
-
+    String session = generateSecretKey();
 
     String content = "", sessionKey = "";
+
     try {
 
-      content =
-          new String(Base64.getEncoder().encode(
-              aes.doFinal(Base64.getEncoder().encode(m.getFormatted().getBytes("UTF-8")))));
+      content = encodeStringAES(m.getFormatted(), session);
 
-      sessionKey =
-          new String(Base64.getEncoder()
-              .encode(rsa.doFinal(keyToString(session).getBytes("UTF-8"))));
+      sessionKey = encodeStringRSA(session, forContact.getPublicKey());
 
-    } catch (UnsupportedEncodingException e) {
-      Core.instance.printError("Couldn't retrieve secret key!", e, true);
+    } catch (InvalidKeySpecException e) {
+      throw new InvalidKeyException("Invalid key.", e);
     } catch (IllegalBlockSizeException | BadPaddingException e) {
       Core.instance.printError("Couldn't encrypt InternalMessage!", e, true);
     }
@@ -113,46 +109,107 @@ public class HybridCoder {
     return new EncryptedMessage(sessionKey, content);
   }
 
-  public static InternalMessage decodeMessage(EncryptedMessage m) throws InvalidKeyException, FormatException {
-    try {
-      rsa.init(Cipher.DECRYPT_MODE,
-          getPrivateKeyFromString(Core.instance.getUser().getPrivateKey()));
-    } catch (InvalidKeySpecException e) {
-      throw new InvalidKeyException("Invalid key.", e);
-    }
+  public static InternalMessage decodeMessage(EncryptedMessage m) throws InvalidKeyException,
+      FormatException {
 
     String formattedIM = "";
 
     try {
-      aes.init(
-          Cipher.DECRYPT_MODE,
-          getSecretKeyFromString(new String(
-              rsa.doFinal(
-                  Base64.getDecoder().decode(
-              m.getSessionKey().getBytes("UTF-8"))))));
 
       formattedIM =
-          new String(Base64.getDecoder().decode(
-              aes.doFinal(Base64.getDecoder().decode(m.getEncrypted().getBytes("UTF-8")))));
+          decodeStringAES(m.getEncrypted(),
+              decodeStringRSA(m.getSessionKey(), Core.instance.getUser().getPrivateKey()));
 
-    } catch (UnsupportedEncodingException e) {
-      Core.instance.printError("Couldn't retrieve secret key!", e, true);
-    } catch (IllegalBlockSizeException | BadPaddingException e) {
-      Core.instance.printError("Couldn't decrypt EncryptedMessage!", e, true);
+    } catch (InvalidKeySpecException | IllegalBlockSizeException | BadPaddingException e) {
+      throw new InvalidKeyException("Invalid key.", e);
     }
-    
+
     return new InternalMessage(formattedIM);
 
   }
 
+  private static String encodeStringAES(String string, String secretKey) throws InvalidKeyException,
+      IllegalBlockSizeException, BadPaddingException {
+
+    aes.init(Cipher.ENCRYPT_MODE, getSecretKeyFromString(secretKey));
+
+    try {
+
+      return new String(Base64.getUrlEncoder().encode(
+          aes.doFinal(Base64.getUrlEncoder().encode(string.getBytes("UTF-8")))));
+
+    } catch (UnsupportedEncodingException e) {
+      Core.instance.printError("Couldn't retrieve String content!", e, true);
+    }
+
+    return null;
+  }
+
+  private static String decodeStringAES(String string, String secretKey) throws InvalidKeyException,
+      InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException {
+
+    aes.init(Cipher.DECRYPT_MODE, getSecretKeyFromString(secretKey));
+
+    try {
+
+      return new String(Base64.getUrlDecoder().decode(
+          aes.doFinal(Base64.getUrlDecoder().decode(string.getBytes("UTF-8")))));
+
+    } catch (UnsupportedEncodingException e) {
+      Core.instance.printError("Couldn't retrieve String content!", e, true);
+    }
+
+    return null;
+  }
+
+  private static String encodeStringRSA(String string, String publicKey) throws InvalidKeyException,
+      InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException {
+
+    rsa.init(Cipher.ENCRYPT_MODE, getPublicKeyFromString(publicKey));
+
+    try {
+
+      return new String(Base64.getUrlEncoder().encode(
+          rsa.doFinal(Base64.getUrlEncoder().encode(string.getBytes("UTF-8")))));
+
+    } catch (UnsupportedEncodingException e) {
+      Core.instance.printError("Couldn't retrieve String content!", e, true);
+    }
+
+    return null;
+  }
+
+  private static String decodeStringRSA(String string, String privateKey)
+      throws InvalidKeyException, InvalidKeySpecException, IllegalBlockSizeException,
+      BadPaddingException {
+
+    rsa.init(Cipher.DECRYPT_MODE, getPrivateKeyFromString(privateKey));
+
+    try {
+
+      return new String(Base64.getUrlDecoder().decode(
+          rsa.doFinal(Base64.getUrlDecoder().decode(string.getBytes("UTF-8")))));
+
+    } catch (UnsupportedEncodingException e) {
+      Core.instance.printError("Couldn't retrieve String content!", e, true);
+    }
+
+    return null;
+  }
+
   private static String keyToString(Key key) {
-    return Base64.getEncoder().encodeToString(key.getEncoded());
+
+    return Base64.getUrlEncoder().encodeToString(key.getEncoded());
   }
 
   private static SecretKey getSecretKeyFromString(String key) {
+
     byte[] decodedKey = null;
+
     try {
-      decodedKey = Base64.getDecoder().decode(key.getBytes("UTF-8"));
+
+      decodedKey = Base64.getUrlDecoder().decode(key.getBytes("UTF-8"));
+
     } catch (UnsupportedEncodingException e) {
       Core.instance.printError("Couldn't retrieve secret key!", e, true);
     }
@@ -161,10 +218,15 @@ public class HybridCoder {
   }
 
   private static PublicKey getPublicKeyFromString(String key) throws InvalidKeySpecException {
+
     byte[] decodeKey = null;
+
     try {
-      decodeKey = Base64.getDecoder().decode(key.getBytes("UTF-8"));
+
+      decodeKey = Base64.getUrlDecoder().decode(key.getBytes("UTF-8"));
+
       X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decodeKey);
+
       return kf.generatePublic(keySpec);
 
     } catch (UnsupportedEncodingException e) {
@@ -176,10 +238,15 @@ public class HybridCoder {
   }
 
   private static PrivateKey getPrivateKeyFromString(String key) throws InvalidKeySpecException {
+
     byte[] decodeKey = null;
+
     try {
-      decodeKey = Base64.getDecoder().decode(key.getBytes("UTF-8"));
+
+      decodeKey = Base64.getUrlDecoder().decode(key.getBytes("UTF-8"));
+
       PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decodeKey);
+
       return kf.generatePrivate(keySpec);
 
     } catch (UnsupportedEncodingException e) {
