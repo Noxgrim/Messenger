@@ -3,9 +3,9 @@ package exchange;
 import java.security.InvalidKeyException;
 import java.util.regex.Matcher;
 
-import coversations.security.HybridCoder;
 import persons.Contact;
 import utils.Formats;
+import utils.HybridCoder;
 import exceptions.FormatException;
 
 /**

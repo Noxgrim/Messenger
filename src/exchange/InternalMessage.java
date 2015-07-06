@@ -4,10 +4,10 @@ import java.security.InvalidKeyException;
 import java.util.GregorianCalendar;
 import java.util.regex.Matcher;
 
-import coversations.security.HybridCoder;
 import main.Core;
 import persons.Contact;
 import utils.Formats;
+import utils.HybridCoder;
 import exceptions.FormatException;
 
 /**
