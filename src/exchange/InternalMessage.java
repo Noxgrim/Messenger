@@ -19,6 +19,7 @@ import exceptions.FormatException;
  * set, the Message will be interpreted as a Command. Even if the <code>command</code> is set the
  * Message has to start with a ' <code>/</code>'.<br>
  * The <code>getEncryptedMessage</code> can be used to easily encrypt a given Message.
+ * 
  * @see EncryptedMessage
  * @see Message
  * @see Formats
@@ -35,7 +36,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   private String uuidConversation;
   /** The time this Message was created. */
   private GregorianCalendar timeStamp;
-  /** 
+  /**
    * Whether the Message has been sent.<br>
    * (Will not be saved in the formatted Message String.)
    */
@@ -140,7 +141,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   public boolean isCommand() {
     return command;
   }
-  
+
   /**
    * @return whether this Message has been sent.
    */
@@ -154,28 +155,28 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   public String getUuidSender() {
     return uuidSender;
   }
-  
+
   /**
    * @return the UUID of the Conversation.
    */
   public String getUuidConversation() {
     return uuidConversation;
   }
-  
+
   /**
    * @return the time stamp of this Message.
    */
   public GregorianCalendar getTimeStamp() {
     return timeStamp;
   }
-  
+
   /**
    * @return the content.
    */
   public String getContent() {
     return content;
   }
-  
+
   /**
    * @param sent whether this Message has been sent.
    */
@@ -185,7 +186,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
 
   @Override
   public String toString() {
-    return "Message{\"+" + getFormatted() + "\"}";
+    return "Message{\"" + getFormatted() + "\"}";
   }
 
   /**
@@ -211,9 +212,11 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    * @return whether the given format is valid.
    */
   private boolean formatIsValid(String s) {
-    return (Formats.MESSAGE_FORMAT.matcher(s).matches()
-        && headerIsValid(s.split(Character.toString(Formats.DELIMITER_CHAR))[0]) && contentIsValid(s
-          .split(Character.toString(Formats.DELIMITER_CHAR))[1]));
+    
+    return Formats.MESSAGE_FORMAT.matcher(s).matches()
+        && headerIsValid(s.substring(0, s.lastIndexOf((int) Formats.DELIMITER_CHAR)))
+        && contentIsValid(s.substring(s.lastIndexOf((int) Formats.DELIMITER_CHAR) + 1));
+
   }
 
   /**
@@ -263,7 +266,10 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
       throw new FormatException("Invalid formatted message.");
     } else {
       Matcher m = Formats.MESSAGE_FORMAT.matcher(formattedMsgString);
-      timeStamp.setTimeInMillis(Long.parseLong(m.group(1), 16)/1000);
+      m.matches();
+      if (timeStamp == null)
+        timeStamp = new GregorianCalendar();
+      timeStamp.setTimeInMillis(Long.parseLong(m.group(1), 16) * 1000);
       uuidConversation = m.group(2);
       uuidSender = m.group(3);
       command = m.group(4).charAt(0) == '1';
