@@ -3,6 +3,7 @@ package manager;
 import java.util.ArrayList;
 import java.util.List;
 
+import userInterface.UserInterface;
 import utils.Formats;
 import main.Core;
 import exchange.InternalMessage;
@@ -14,9 +15,11 @@ public class CommandManager {
 
   private List<Command> cmds = new ArrayList<Command>();
 
-  public CommandManager() {
-    registerCommand(new SlashEscapeCommand());
-    registerCommand(new ExitCommand());
+  public CommandManager() {}
+  
+  public CommandManager(List<Command> commands) {
+    for (Command c : commands)
+      registerCommand(c);
   }
 
   /**
@@ -26,9 +29,13 @@ public class CommandManager {
    * 
    * @param m the Message that will be performed.
    */
-  public void runMessageCommand(InternalMessage m) {
-    if (!m.isCommand())
-      throw new IllegalArgumentException("Message isn't a Command!");
+  public boolean runMessageCommand(InternalMessage m) {
+    UserInterface ui = Core.instance.getUserInterface();
+    
+    if (!m.isCommand()) {
+      ui.printError("Message isn't a Command!");
+      return false;
+    }
 
     String[] commandContent = Formats.escapeRegex((m.getContent())).split(" ");
     for (int i = 0; i < commandContent.length; i++)
@@ -47,15 +54,18 @@ public class CommandManager {
             target = cmd;
       
 
-    if (target == null)
-      Core.getInstance().getUserInterface().printError("Unknown Command.");
+    if (target == null) {
+      ui.printError("Unknown Command.");
+      return false;
+    }
+      
     else {
       String[] args = new String[commandContent.length - 1];
 
       for (int i = 1; i < commandContent.length; i++)
         args[i - 1] = commandContent[i];
 
-      target.perform(args);
+      return target.perform(args);
     }
   }
 
@@ -69,7 +79,7 @@ public class CommandManager {
 
     for (Command cmd : cmds)
       if (cmd.getName().equalsIgnoreCase(c.getName())) {
-        Core.getInstance()
+        Core.instance
             .getUserInterface()
             .printError(
                 "Cannot add Command '" + c.getName() + "' (name conflict with '"
@@ -79,7 +89,7 @@ public class CommandManager {
         for (String alias : cmd.getAliases())
           for (String alias2 : c.getAliases())
             if (alias.equals(alias2)) {
-              Core.getInstance()
+              Core.instance
                   .getUserInterface()
                   .printError(
                       "Cannot add Command '" + c.getName() + "' (alias name conflict with '"
@@ -88,6 +98,11 @@ public class CommandManager {
             }
 
     cmds.add(c);
+  }
+  
+  public void registerDefaults() {
+    registerCommand(new SlashEscapeCommand());
+    registerCommand(new ExitCommand());
   }
 
 }
