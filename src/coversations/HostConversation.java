@@ -5,6 +5,7 @@ import java.util.List;
 
 import main.Core;
 import persons.Contact;
+import exceptions.DBException;
 import exceptions.FormatException;
 import exchange.InternalMessage;
 
@@ -27,9 +28,15 @@ public class HostConversation extends Conversation {
     this.participants = participants;
   }
   
-  public HostConversation(String uuid, String name, List<String> participants) {
+  public HostConversation(String uuid, String name, List<String> participants) throws DBException {
     super(uuid, name);
-    this.participants = participants;
+    
+    this.participants = new ArrayList<Contact>();
+    
+    for (Contact c: Core.instance.getDatabase().getContacts())
+      for (String s : participants)
+        if (c.getUUID().equals(s) && !this.participants.contains(c))
+          this.participants.add(c);
   }
 
   public HostConversation(Contact c, String name) {
@@ -108,7 +115,7 @@ public class HostConversation extends Conversation {
     boolean result = true;
 
     for (Contact c : participants)
-      if (!Core.getInstance().getClient().sendMessage(m, c.getAddress())) {
+      if (!Core.instance.getMessageManager().interpreteOutgoingMessage(m, c)) {
         result = false;
         Core.getInstance().getUserInterface()
             .printError("Sending to '" + c.getNickname() + "' failed.");
@@ -121,6 +128,12 @@ public class HostConversation extends Conversation {
   public List<String> getParticipantsIds() {
     // TODO Auto-generated method stub
     return null;
+  }
+  
+  @Override
+  public void logMessage(InternalMessage im) {
+    // TODO Auto-generated method stub
+    
   }
 
 }

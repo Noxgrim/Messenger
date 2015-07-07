@@ -85,6 +85,8 @@ public abstract class Conversation {
         return true;
     return false;
   }
+  
+  public abstract void logMessage(InternalMessage im);
 
 
 

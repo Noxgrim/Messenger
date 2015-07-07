@@ -5,6 +5,7 @@ import java.util.List;
 
 import main.Core;
 import persons.Contact;
+import exceptions.DBException;
 import exceptions.FormatException;
 import exchange.InternalMessage;
 
@@ -45,5 +46,14 @@ public class GuestConversation extends Conversation {
     List<String> participantsIds = new LinkedList<String>();
     participantsIds.add(host.getUUID());
     return participantsIds;
+  }
+  
+  @Override
+  public void logMessage(InternalMessage im) {
+    try {
+      Core.instance.getDatabase().addMessage(im);
+    } catch (DBException e) {
+      Core.instance.getUserInterface(); //TODO Do Stuff!!!!11!
+    }
   }
 }
