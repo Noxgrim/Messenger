@@ -8,7 +8,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 // import java.nio.CharBuffer;
 
+
 import main.Core;
+import exchange.EncryptedMessage;
 import exchange.InternalMessage;
 
 public class Server implements Runnable, AutoCloseable {
@@ -20,9 +22,8 @@ public class Server implements Runnable, AutoCloseable {
       serverSock = new ServerSocket(core.getSettings().getPort());
       this.parent = core;
     } catch (Exception e) {
-      System.err.println("[Server] Error in constructor. Not able to bind to port.\n"
-          + e.getMessage());
-      throw e;
+      core.printError("[Server] Error in constructor. Not able to bind to port.\n"
+          + e.getMessage(), e, true);
     }
   }
 
@@ -52,8 +53,8 @@ public class Server implements Runnable, AutoCloseable {
         String formattedMsg = in.readLine();
         System.out.println("[Server] Received data: " + formattedMsg);
         try {
-          InternalMessage msg = new InternalMessage(formattedMsg);
-          parent.getMessageManager().interpreteMessage(msg);
+          EncryptedMessage msg = new EncryptedMessage(formattedMsg);
+          parent.getMessageManager().interpreteIncomingMessage(msg);
           out.write("true\n"); // Message was received and parsed
           // successfully
           out.flush();
@@ -75,7 +76,7 @@ public class Server implements Runnable, AutoCloseable {
   @Override
   public void close() throws IOException {
 
-    if (!serverSock.isClosed())
+    if (serverSock != null && !serverSock.isClosed())
       serverSock.close();
 
   }

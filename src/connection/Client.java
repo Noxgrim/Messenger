@@ -6,11 +6,11 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
-import exchange.InternalMessage;
 import main.Core;
+import exchange.EncryptedMessage;
 
 public class Client {
-  public boolean sendMessage(InternalMessage msg, InetSocketAddress address) {
+  public boolean sendMessage(EncryptedMessage msg, InetSocketAddress address) {
     if (address.isUnresolved())
       return false;
     try (Socket sock = new Socket(address.getAddress(), address.getPort());) {
