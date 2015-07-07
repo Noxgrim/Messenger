@@ -95,7 +95,7 @@ public class Core {
         (this.settings.getGuiMode()) ? new GraphicalUserIterface(this) : new TerminalUserInterface(
             this);
 
-    messageManager = new MessageManager();
+    messageManager = new MessageManager(cm);
 
     client = new Client();
 
