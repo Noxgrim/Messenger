@@ -68,52 +68,52 @@ public class Settings {
   private final char delimiter = '\u001D';
 
   /** The message length limit in characters. */
-  @Data
+  @Data(defVal = "4096")
   private int msgLenLimit = 4096;
   /** The header length limit in characters. */
-  @Data
+  @Data(defVal = "256")
   private int headerLenLimit = 256;
   /** The nickname length limit in characters. */
-  @Data
+  @Data(defVal = "64")
   private int nickLenLimit = 64;
   /** The length of the generated session key in bits. */
-  @Data
+  @Data(defVal = "128")
   private int sessionKeyLen = 128;
   /** The socket timeout time in milliseconds. */
-  @Data
+  @Data(defVal = "1000")
   private int connectionTimeout = 1000;
 
   /**
    * The boolean that determines if the program starts in terminal or GUI mode.
    */
-  @Data(getter = "getGuiMode", setter = "setGuiMode")
+  @Data(defVal = "false", getter = "getGuiMode", setter = "setGuiMode")
   private boolean gui = false;
   /** The boolean that determines if exceptions will be printed. */
-  @Data(getter = "getPrintExceptions", setter = "setPrintExceptions")
+  @Data(defVal = "false", getter = "getPrintExceptions", setter = "setPrintExceptions")
   private boolean exceptions = false;
   /**
    * The boolean that determines if debug messages will be printed. Can be set via Command line
    * arguments.
    */
-  @Data(save = false, load = false)
+  @Data(defVal = "false", save = false, load = false)
   private boolean debug = false;
   /** The boolean that determines if colors will be shown. */
-  @Data(getter = "getColorShown", setter = "setColorShown")
+  @Data(defVal = "true", getter = "getColorShown", setter = "setColorShown")
   private boolean color = true;
 
   /** The nickname of the user. */
-  @Data
+  @Data(defVal = "MissingNo")
   private String ownNick = null;
-  @Data(load = false, comment = "Currrently unused.")
+  @Data(defVal = "localhost", load = false, comment = "Currrently unused.")
   private String host = null;
   /**
    * The port of the internal server.
    */
-  @Data
+  @Data(defVal = "1337")
   private int port = 1337;
 
   /** Path to the SQLite database file. */
-  @Data
+  @Data(defVal = "./data/messengerDB.sqlite", filePath = true)
   private String dbLocation;
 
   /**
@@ -496,18 +496,16 @@ public class Settings {
    */
   public void setToDefault(boolean save) {
 
-    this.msgLenLimit = 4098;
-    this.headerLenLimit = 256;
-    this.nickLenLimit = 64;
-    this.sessionKeyLen = 128;
-    this.gui = false;
-    this.exceptions = false;
-    this.debug = false;
-    this.color = true;
-    this.ownNick = "MissingNo";
-    this.host = "localhost";
-    this.port = 1337;
-    this.dbLocation = "." + File.separatorChar + "data" + File.separatorChar + "messengerDB.sqlite";
+    for (FieldData fd : FieldData.getSaveableFields(Settings.class))
+      try {
+
+        fd.invoke(fd.getData().filePath() ? fd.getData().defVal().replace('/', File.separatorChar)
+            : fd.getData().defVal(), this);
+        
+      } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
+          | InvocationTargetException | SecurityException e) {
+        parent.printError(null, e, false);
+      }
 
     if (save) {
       this.save();
@@ -743,6 +741,7 @@ public class Settings {
    * <ul>
    * <li> <code>load</code>: <code>true</code>
    * <li> <code>save</code>: <code>true</code>
+   * <li> <code>filePath</code>: <code>false</code>
    * <li> <code>comment</code>: <code>""</code>
    * <li> <code>getter</code>: <code>""</code>
    * <li> <code>setter</code>: <code>""</code>
@@ -751,6 +750,10 @@ public class Settings {
   @Retention(RetentionPolicy.RUNTIME)
   @Target(ElementType.FIELD)
   private @interface Data {
+
+    /** The default value. */
+    String defVal();
+
     /** Load this field. */
     boolean load() default true;
 
@@ -767,6 +770,12 @@ public class Settings {
      * Comment that will be written behind the saved field value.
      */
     String comment() default "";
+
+    /**
+     * Will be marked as file path. If field is are file path every <code>'/'</code> will be
+     * replaced by the default file system file separator.
+     */
+    boolean filePath() default false;
   }
 
   public static class FieldData implements Comparable<FieldData> {
@@ -833,6 +842,10 @@ public class Settings {
 
     public String getComment() {
       return comment;
+    }
+
+    public Data getData() {
+      return field.getDeclaredAnnotation(Data.class);
     }
 
     public boolean isLoadable() {
