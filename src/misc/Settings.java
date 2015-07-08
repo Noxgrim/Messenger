@@ -509,8 +509,6 @@ public class Settings {
     this.port = 1337;
     this.dbLocation = "." + File.separatorChar + "data" + File.separatorChar + "messengerDB.sqlite";
 
-    // TODO Add generation of a new key pair.
-
     if (save) {
       this.save();
     }
