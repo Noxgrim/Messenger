@@ -140,22 +140,13 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    *         {@code (Delimiter)+time stamp+(Delimiter)+CoversationUUID+(Delimiter)+SenderUUID+(delimiter)+command+(Delimiter)+content}
    */
   public String getFormatted() {
-    String result = "";
 
-    result += Formats.DELIMITER_CHAR;
-    result += Long.toHexString(timeStamp.getTimeInMillis() / 1000);
-    result += Formats.DELIMITER_CHAR;
-    result += uuidConversation;
-    result += Formats.DELIMITER_CHAR;
-    result += uuidSender;
-    result += Formats.DELIMITER_CHAR;
-    result += command ? 1 : 0;
-    result += Formats.DELIMITER_CHAR;
-    result += content;
+    return Formats.escapeRegex(Formats.DELIMITER_CHAR
+        + Formats.DELIMITER_CHAR
+        + String.join(Character.toString(Formats.DELIMITER_CHAR),
+            Long.toHexString(timeStamp.getTimeInMillis() / 1000), uuidConversation, uuidSender,
+            command ? "1" : "0", content));
 
-    result = Formats.escapeRegex(result);
-
-    return result;
   }
 
   /**
@@ -171,7 +162,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   public boolean isSent() {
     return sent;
   }
-  
+
   /**
    * @return whether the Message has a database ID.
    */
@@ -206,10 +197,10 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   public String getContent() {
     return content;
   }
-  
+
   /**
    * @return the database ID of this Message.<br>
-   * <code>-1</code> if no Id is set.
+   *         <code>-1</code> if no Id is set.
    */
   public int getDatabaseId() {
     return dbId;
@@ -325,10 +316,11 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   public void setCommand(boolean command) {
     this.command = command;
   }
-  
+
   /**
    * Sets the database ID. <br>
    * <code>-1</code> (or lower) indicates that this Message has no database ID.
+   * 
    * @param id the ID to be set.
    */
   public void setDatabaseID(int id) {
