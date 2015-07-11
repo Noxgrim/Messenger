@@ -60,21 +60,6 @@ public class HostConversation extends Conversation {
   }
 
   /**
-   * Gets a specific Contact of a Conversation.
-   * 
-   * @param c The Contact to get.
-   * @return the Contact.
-   */
-  public Contact getParticipant(Contact paticipant) {
-    if (!participants.contains(paticipant)) {
-      throw new IllegalArgumentException("Couldn't find contact '" + paticipant.getNickname()
-          + "' is this conservation!");
-    }
-
-    return participants.get(participants.indexOf(paticipant));
-  }
-
-  /**
    * Adds a specific contact to a Conversation if the Contact is not a participant.
    * 
    * @param paticipant Contact to add.
