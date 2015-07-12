@@ -1,34 +1,18 @@
 package main;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.security.InvalidKeyException;
-import java.security.KeyFactory;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Stack;
-import java.util.UUID;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 
 import manager.ConversationManager;
 import manager.MessageManager;
 import misc.Settings;
-import persons.Contact;
 import persons.User;
 import userInterface.GraphicalUserIterface;
 import userInterface.TerminalUserInterface;
 import userInterface.UserInterface;
-import utils.Formats;
-import utils.HybridCoder;
 import connection.Client;
 import connection.Server;
 import database.Database;
 import exceptions.DBException;
-import exchange.EncryptedMessage;
-import exchange.InternalMessage;
 
 /**
  * The Core class. <br>
@@ -36,7 +20,7 @@ import exchange.InternalMessage;
  */
 public class Core {
   /** An instance of this object. */
-  public static Core instance;
+  public static final Core instance;
 
   /** The settings of the program. */
   private Settings settings;
@@ -60,18 +44,22 @@ public class Core {
 
   /**
    * Constructs a new {@code Core} object.
-   * 
-   * @param arguments The command line arguments.
    */
-  public Core(String[] arguments) {
-    try {
-      init(arguments);
-    } catch (Throwable t) {
-      printError("A fatal error occurred while initialising the program: ", t, true);
-    }
-
+  public Core() {
   }
 
+  /**
+   * Initialises the final instance of this class.
+   */
+  static {
+ 
+    instance = new Core();
+ 
+  }
+  
+  
+  
+  
   /**
    * Initialises the program.
    * 
@@ -81,7 +69,7 @@ public class Core {
   private void init(String[] args) throws Throwable {
 
 
-    settings = new Settings(this);
+    settings = new Settings();
 
 
 
@@ -103,7 +91,7 @@ public class Core {
     try {
       Server testServer = null;
       try {
-        server = new Server(this);
+        server = new Server();
       } catch (Exception e) {
         ui.printError("Internal Server couldn't be started.", null, true);
       }
@@ -254,7 +242,11 @@ public class Core {
    * @param args The arguments of the program.
    */
   public static void main(String[] args) {
-    instance = new Core(args);
+    try {
+      instance.init(args);
+    } catch (Throwable t) {
+      instance.printError("A fatal error occurred while initialising the program: ", t, true);
+    }
   }
 
   /**

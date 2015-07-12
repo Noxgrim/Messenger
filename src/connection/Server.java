@@ -11,18 +11,15 @@ import java.net.Socket;
 
 import main.Core;
 import exchange.EncryptedMessage;
-import exchange.InternalMessage;
 
 public class Server implements Runnable, AutoCloseable {
   private ServerSocket serverSock;
-  private Core parent;
 
-  public Server(Core core) throws Exception {
+  public Server() throws Exception {
     try {
-      serverSock = new ServerSocket(core.getSettings().getPort());
-      this.parent = core;
+      serverSock = new ServerSocket(Core.instance.getSettings().getPort());
     } catch (Exception e) {
-      core.printError("[Server] Error in constructor. Not able to bind to port.\n"
+      Core.instance.printError("[Server] Error in constructor. Not able to bind to port.\n"
           + e.getMessage(), e, true);
     }
   }
@@ -31,7 +28,7 @@ public class Server implements Runnable, AutoCloseable {
   public void run() {
 
     while (true) {
-      if (serverSock == null || parent == null || !serverSock.isBound())
+      if (serverSock == null || Core.instance == null || !serverSock.isBound())
         throw new IllegalStateException("Unbound ServerSocket in Server class");
       if (Thread.interrupted() && serverSock != null) {
         try {
@@ -45,7 +42,7 @@ public class Server implements Runnable, AutoCloseable {
           BufferedReader in =
               new BufferedReader(new InputStreamReader(clientSock.getInputStream()));
           PrintWriter out = new PrintWriter(clientSock.getOutputStream());) {
-        clientSock.setSoTimeout(parent.getSettings().getConnectionTimeout());
+        clientSock.setSoTimeout(Core.instance.getSettings().getConnectionTimeout());
         // CharBuffer input =
         // CharBuffer.allocate(Defaults.headerLenLimit+Defaults.msgLenLimit+2);
         // in.read(input);
@@ -54,17 +51,17 @@ public class Server implements Runnable, AutoCloseable {
         System.out.println("[Server] Received data: " + formattedMsg);
         try {
           EncryptedMessage msg = new EncryptedMessage(formattedMsg);
-          parent.getMessageManager().interpreteIncomingMessage(msg);
+          Core.instance.getMessageManager().interpreteIncomingMessage(msg);
           out.write("true\n"); // Message was received and parsed
           // successfully
           out.flush();
         } catch (Exception e) {
           out.write("false\n"); // There was a parsing error
           out.flush();
-          Core.getInstance().getUserInterface().printError(e);
+          Core.instance.getUserInterface().printError(e);
         }
       } catch (Throwable t) {
-        Core.getInstance().getUserInterface()
+        Core.instance.getUserInterface()
             .printError("[Server] Error while handling connection: " + t.getMessage());
       }
     }
@@ -82,12 +79,12 @@ public class Server implements Runnable, AutoCloseable {
   }
 
   // private class SocketThread implements Runnable {
-  // private NetworkTestReloaded parent;
+  // private NetworkTestReloaded Core.instance.instance.instance;
   // private Socket client;
   //
-  // public SocketThread(Socket client, NetworkTestReloaded parent) {
+  // public SocketThread(Socket client, NetworkTestReloaded Core.instance.instance.instance) {
   // this.client = client;
-  // this.parent = parent;
+  // Core.instance.instance.instance = Core.instance.instance.instance;
   // }
   //
   // @Override
@@ -103,7 +100,7 @@ public class Server implements Runnable, AutoCloseable {
   // System.out.println("[In SocketThread] Received data: "+formattedMsg);
   // try {
   // Message msg = new Message(formattedMsg);
-  // parent.addMessage(msg);
+  // Core.instance.instance.instance.addMessage(msg);
   // out.write("true"); //Message was received and parsed successfully
   // }
   // catch (Exception e) {

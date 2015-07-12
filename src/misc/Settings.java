@@ -51,10 +51,6 @@ import exceptions.FormatException;
  * </ul>
  */
 public class Settings {
-  /** The parent {@code Core} object */
-  private Core parent;
-
-
 
   /**
    * The location of the configuration file. Can be set via Command line arguments.
@@ -119,11 +115,9 @@ public class Settings {
   /**
    * Constructs a new {@code Settings } object and loads its values from the {@code messenger.cfg}
    * file.
-   * 
-   * @param core The parent {@code Core} object.
    */
-  public Settings(Core core) {
-    this(core, "load", "." + File.separatorChar + "data" + File.separatorChar + "messenger.cfg");
+  public Settings() {
+    this("load", "." + File.separatorChar + "data" + File.separatorChar + "messenger.cfg");
   }
 
   /**
@@ -147,12 +141,10 @@ public class Settings {
    * </tr>
    * </table>
    * 
-   * @param core The parent {@code Core} object.
    * @param creationType The type of the creation. See above.
    * @param fileLocation the location of the file that will be saved and loaded from.
    */
-  public Settings(Core core, String creationType, String fileLocation) {
-    this.parent = core;
+  public Settings(String creationType, String fileLocation) {
     this.fileLocation = fileLocation;
 
     switch (creationType.toLowerCase()) {
@@ -504,7 +496,7 @@ public class Settings {
         
       } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
           | InvocationTargetException | SecurityException e) {
-        parent.printError(null, e, false);
+        Core.instance.printError(null, e, false);
       }
 
     if (save) {
@@ -548,14 +540,14 @@ public class Settings {
           br.write('\n' + fd.getSavedSpelling() + '=' + value + fd.getComment());
 
         } catch (Exception e) {
-          parent.printError("An Error occurred while saving \"" + fd.getField().getName() + "\"",
+          Core.instance.printError("An Error occurred while saving \"" + fd.getField().getName() + "\"",
               e, false);
         }
       }
 
       br.write("\n");
     } catch (IOException e) {
-      parent.printError(null, e, false);
+      Core.instance.printError(null, e, false);
     }
 
   }
@@ -610,13 +602,13 @@ public class Settings {
 
             } catch (NoSuchFieldException | NoSuchMethodException | SecurityException
                 | InvocationTargetException | IllegalAccessException e) {
-              parent.printError("Couldn't load value:", e, false);
+              Core.instance.printError("Couldn't load value:", e, false);
             }
           }
         }
 
       } catch (IOException e) {
-        parent.printError(null, e, false);
+        Core.instance.printError(null, e, false);
       }
   }
 
@@ -637,7 +629,7 @@ public class Settings {
         throw new FormatException("Integer '" + i + "' is too "
             + ((i < min) ? "small (min: " + min : "big (max: " + max) + ").");
       } catch (FormatException e) {
-        parent.printError(null, e, false);
+        Core.instance.printError(null, e, false);
       }
 
     return ifInvalid;
@@ -652,7 +644,7 @@ public class Settings {
       throw new FormatException("Integer '" + i + "' isn't a valid possibility. (Possible values:"
           + Arrays.toString(possibilities) + ")");
     } catch (FormatException e) {
-      parent.printError(null, e, false);
+      Core.instance.printError(null, e, false);
     }
     return ifInvalid;
   }
@@ -675,7 +667,7 @@ public class Settings {
       try {
         throw new FormatException("Nickname too short. (1 character minimum.)");
       } catch (FormatException e) {
-        parent.printError(null, e, false);
+        Core.instance.printError(null, e, false);
       }
       return "MissingNo";
     }
@@ -684,7 +676,7 @@ public class Settings {
       throw new FormatException("Nickname too long. (" + maxLen + " character"
           + ((maxLen == 1) ? "" : "s") + " maximum.)");
     } catch (FormatException e) {
-      parent.printError(null, e, false);
+      Core.instance.printError(null, e, false);
     }
     return nick.substring(0, maxLen);
 
@@ -702,7 +694,7 @@ public class Settings {
       if (InetAddress.getByName(host.toLowerCase()).isReachable(10000))
         return host.toLowerCase();
     } catch (IOException e) {
-      parent.printError(null, e, false);
+      Core.instance.printError(null, e, false);
     }
 
     return this.host;
