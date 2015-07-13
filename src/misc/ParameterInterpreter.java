@@ -286,7 +286,7 @@ public class ParameterInterpreter {
    */
   public static Settings interpretCommandLine(Core core, String[] arguments) {
 
-    Settings s = new Settings(core);
+    Settings s = new Settings();
 
     initDefaultParameters(core, s);
 
