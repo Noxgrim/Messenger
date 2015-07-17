@@ -119,6 +119,7 @@ public class Database implements AutoCloseable {
    *   If numberOfMessages <= 0
    */
   public List<Message> getLastNMessages(int numberOfMessages, boolean onlyUnsent) throws DBException {
+    //TODO Should be integrated in advanced method.
     //Messages:
     //| id | content | sender_id | conversation_id | sent |
     if (!(numberOfMessages > 0)) {
@@ -163,6 +164,7 @@ public class Database implements AutoCloseable {
    *   If numberOfMessages <= 0
    */
   public List<Message> getLastNMessages(int numberOfMessages) throws DBException {
+    //TODO Should be integrated in advanced method.
     return getLastNMessages(numberOfMessages, false);
   }
   
@@ -219,8 +221,11 @@ public class Database implements AutoCloseable {
   public List<Message> getLastNMessages(Conversation conversation, Contact contact, long fromTime, 
       long toTime, int maxNumberOfMessages, boolean onlyUnsent) 
           throws IllegalArgumentException, DBException {
-    //TODO Non-auto-generated method stub. 
+    //TODO Non-auto-generated method stub.
+    // The @throws DBException has to be updated.
     // I hope this is enough JavaDoc for you. ^.-
+    // Maybe you should create methods variations that
+    //  doesn't require as many parameter. 
     
     return null;
   }
@@ -260,6 +265,24 @@ public class Database implements AutoCloseable {
     } catch (SQLException e) {
       throw new DBException("Adding contact failed: "+e.getMessage());
     }
+  }
+  
+  /**
+   * Edits a contact in the database.
+   * 
+   * @param contactUuid 
+   *    The UUID of the contact to be edited.
+   * @param newContact
+   *    The new contact information.<br>
+   *    The former contact's UUID will not be 
+   *    overwritten.
+   *    
+   * @throws DBException
+   *    If a database exception occurs.
+   */
+  public void editContact(String contactUuid, Contact newContact) throws DBException {
+    // TODO Non-auto-generated method stub.
+    // The @throws DBException has to be updated.
   }
   
   /**
