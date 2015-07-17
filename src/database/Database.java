@@ -26,6 +26,7 @@ import exchange.InternalMessage;
 import exchange.Message;
 import persons.Contact;
 import persons.User;
+import sun.security.util.Cache.EqualByteArray;
 
 /**
  * This class can be provides access to the Messenger's database.
@@ -163,6 +164,65 @@ public class Database implements AutoCloseable {
    */
   public List<Message> getLastNMessages(int numberOfMessages) throws DBException {
     return getLastNMessages(numberOfMessages, false);
+  }
+  
+  /**
+   * Get a specific amount of messages in the database.
+   * Only messages with fitting criteria will be returned.
+   * 
+   * @param conversation 
+   *    Specifies the conversation of the messages.<br>
+   *    Only messages that are in the given conversation 
+   *    will be returned.<br>
+   *    If the conversation should be ignored the value
+   *    can be set to <code>null</code>.
+   * @param contact 
+   *    Specifies the contact that sent the messages.<br>
+   *    Only messages that were sent by the given contact
+   *    will be returned.<br>
+   *    If the sender should be ignored the value can be 
+   *    set to <code>null</code>.
+   * @param fromTime
+   *    Specifies the start of the time span (in UNIX time)
+   *    in which the messages were created.<br>
+   *    If set to <code>-1</code> all messages before the
+   *    given <code>toTime</code> will be returned (the
+   *    value will be ignored). 
+   * @param toTime
+   *    Specifies the end of the time span (in UNIX time) 
+   *    in which the messages were created.<br>
+   *    If set to <code>-1</code> all messages after the
+   *    given <code>fromTime</code> will be returned (the
+   *    value will be ignored). 
+   * @param maxNumberOfMessages
+   *    Specifies the maximum number of messages that will
+   *    be returned.<br>
+   *    If the value is set to <code>-1</code>, all fitting
+   *    messages will be returned.
+   * @param onlyUnsent
+   *    If <code>true</code>, only messages that aren't 
+   *    sent will be returned.
+   * 
+   * @return 
+   *    A <code>List</code> of {@link Message}s that fit
+   *    the given criteria.
+   *    
+   * @throws DBException
+   *    If a database exception occurs.
+   * @throws IllegalArgumentException
+   *    If the values of <code>fromTime</code> is bigger than
+   *    <code>toTime</code> or one of the two values is smaller 
+   *    than <code>-1</code> <b>or</b> the value of
+   *    <code>maxNumberOfMessages</code> is equal to 
+   *    <code>0</code> or smaller than <code>-1</code>.
+   */
+  public List<Message> getLastNMessages(Conversation conversation, Contact contact, long fromTime, 
+      long toTime, int maxNumberOfMessages, boolean onlyUnsent) 
+          throws IllegalArgumentException, DBException {
+    //TODO Non-auto-generated method stub. 
+    // I hope this is enough JavaDoc for you. ^.-
+    
+    return null;
   }
   
   /**
