@@ -17,6 +17,8 @@ import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
 
+import persons.Contact;
+import persons.User;
 import coversations.Conversation;
 import coversations.GuestConversation;
 import coversations.HostConversation;
@@ -24,9 +26,6 @@ import exceptions.DBException;
 import exceptions.FormatException;
 import exchange.InternalMessage;
 import exchange.Message;
-import persons.Contact;
-import persons.User;
-import sun.security.util.Cache.EqualByteArray;
 
 /**
  * This class can be provides access to the Messenger's database.
