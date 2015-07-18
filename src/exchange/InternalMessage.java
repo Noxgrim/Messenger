@@ -91,6 +91,12 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
       long timeStamp) throws FormatException {
     this(text, uuidConversation, uuidSender, command, timeStamp, -1);
   }
+  
+  public InternalMessage(String text, String uuidConversation,
+      String uuidSender, long timestamp, int databaseID, int sent) throws FormatException {
+    //TODO I need this constructor...
+    throw new UnsupportedOperationException("not yet implemented…");
+  }
 
   /**
    * Constructs a new <code>Message</code> with the current time and <code>-1</code> database ID.

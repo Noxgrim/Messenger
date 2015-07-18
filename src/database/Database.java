@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 import persons.Contact;
 import persons.User;
@@ -31,7 +32,7 @@ import exchange.Message;
  * This class can be provides access to the Messenger's database.
  * The database consists of the following tables:
  * Messages:
- * | id | content | sender_id | conversation_id | sent |
+ * | id | content | sender_id | conversation_id | timestamp | sent |
  * Contacts:
  * | id | name | uuid | public_key | address |
  * Users:
@@ -90,15 +91,36 @@ public class Database implements AutoCloseable {
    */
   public void addMessage(InternalMessage m) throws DBException {
     //Messages:
-    //| id | content | sender_id | conversation_id | sent |
+    //| id | content | sender_id | conversation_id | timestamp | sent |
     try (Statement stmt = conn.createStatement();) {
       EscapedString content = new EscapedString(m.getContent());
       int sender_id = getContactId(new EscapedString(m.getUuidSender()));
       int conversation_id = getConversationId(new EscapedString(m.getUuidConversation()));
       boolean sent = m.isSent();
-      String sql = "INSERT INTO "+MESSAGES_TABLE + "(content,sender_id,conversation_id,sent) "
+      long timestamp = m.getTimeStamp().getTimeInMillis();
+      String sql = "INSERT INTO "+MESSAGES_TABLE
+          + "(content,sender_id,conversation_id,timestamp,sent) "
           + "VALUES ("+content.toQuotedString()+","+sender_id+","+conversation_id
-          + ","+(sent?1:0)+");";
+          + ","+timestamp+","+(sent?1:0)+");";
+      stmt.executeUpdate(sql);
+    } catch (SQLException e) {
+      throw new DBException(e.getMessage());
+    }
+  }
+  
+  /**
+   * Increment the column 'sent' of a message.
+   * @param id
+   *   The message's ID.
+   * @throws IllegalArgumentException
+   *   if id < 0
+   */
+  public void incrementSent(int id) throws DBException {
+    if (id < 0) {
+      throw new IllegalArgumentException("id smaller than 0. id = "+id);
+    }
+    String sql = "UPDATE "+MESSAGES_TABLE+" WHERE id = "+id+" SET id = id + 1;";
+    try (Statement stmt = conn.createStatement()) {
       stmt.executeUpdate(sql);
     } catch (SQLException e) {
       throw new DBException(e.getMessage());
@@ -117,39 +139,8 @@ public class Database implements AutoCloseable {
    * @throws IllegaArgumentException
    *   If numberOfMessages <= 0
    */
-  public List<Message> getLastNMessages(int numberOfMessages, boolean onlyUnsent) throws DBException {
-    //TODO Should be integrated in advanced method.
-    //Messages:
-    //| id | content | sender_id | conversation_id | sent |
-    if (!(numberOfMessages > 0)) {
-      throw new IllegalArgumentException("NumberOfMessages for getLastNMessages(int,boolean) "+
-                                         "must be greater than 0.");
-    }
-    try (Statement stmt = conn.createStatement();) {
-      String sql;
-      if (onlyUnsent)
-        sql = "SELECT * FROM (SELECT * FROM "+MESSAGES_TABLE+" WHERE sent = 1 "
-            + "ORDER BY id DESC LIMIT " + numberOfMessages+") ORDER BY id ASC;";
-      else
-        sql = "SELECT * FROM (SELECT * FROM "+MESSAGES_TABLE
-            + "ORDER BY id DESC LIMIT " + numberOfMessages+") ORDER BY id ASC;";
-      ResultSet rs = stmt.executeQuery(sql);
-      LinkedList<Message> results = new LinkedList<Message>();
-      while (rs.next()) {
-        String content = rs.getString("content");
-        int sender_id = rs.getInt("sender_id");
-        int conversation_id = rs.getInt("conversation_id");
-        int sent_int = rs.getInt("sent");
-        assert sent_int == 0 || sent_int == 1: "Fatal error: sent_int must be 0 or 1, but is "
-                                               +sent_int;
-        boolean sent =  sent_int == 1 ? true : false;
-        results.add(new InternalMessage(content, getConversation(conversation_id).getUUID(),
-            getContactUuid(sender_id), sent));
-      }
-      return results;
-    } catch (FormatException|SQLException e) {
-      throw new DBException(e.getMessage());
-    }
+  public List<Message> getLastNMessages(int maxNumberOfMessages, boolean onlyUnsent) throws DBException {
+    return _getLastNMessages(null, null, 0, Long.MAX_VALUE, maxNumberOfMessages, onlyUnsent);    
   }
   
   /**
@@ -175,31 +166,19 @@ public class Database implements AutoCloseable {
    *    Specifies the conversation of the messages.<br>
    *    Only messages that are in the given conversation 
    *    will be returned.<br>
-   *    If the conversation should be ignored the value
-   *    can be set to <code>null</code>.
    * @param contact 
    *    Specifies the contact that sent the messages.<br>
    *    Only messages that were sent by the given contact
    *    will be returned.<br>
-   *    If the sender should be ignored the value can be 
-   *    set to <code>null</code>.
    * @param fromTime
    *    Specifies the start of the time span (in UNIX time)
    *    in which the messages were created.<br>
-   *    If set to <code>-1</code> all messages before the
-   *    given <code>toTime</code> will be returned (the
-   *    value will be ignored). 
    * @param toTime
    *    Specifies the end of the time span (in UNIX time) 
    *    in which the messages were created.<br>
-   *    If set to <code>-1</code> all messages after the
-   *    given <code>fromTime</code> will be returned (the
-   *    value will be ignored). 
    * @param maxNumberOfMessages
    *    Specifies the maximum number of messages that will
    *    be returned.<br>
-   *    If the value is set to <code>-1</code>, all fitting
-   *    messages will be returned.
    * @param onlyUnsent
    *    If <code>true</code>, only messages that aren't 
    *    sent will be returned.
@@ -213,20 +192,185 @@ public class Database implements AutoCloseable {
    * @throws IllegalArgumentException
    *    If the values of <code>fromTime</code> is bigger than
    *    <code>toTime</code> or one of the two values is smaller 
-   *    than <code>-1</code> <b>or</b> the value of
-   *    <code>maxNumberOfMessages</code> is equal to 
-   *    <code>0</code> or smaller than <code>-1</code>.
+   *    than <code>0</code> <b>or</b> the value of
+   *    <code>maxNumberOfMessages</code> is equal to or smaller than
+   *    <code>0</code>.
+   * @throws NullPointerException
+   *    If either contact or conv are <code>null</code>.
    */
-  public List<Message> getLastNMessages(Conversation conversation, Contact contact, long fromTime, 
-      long toTime, int maxNumberOfMessages, boolean onlyUnsent) 
-          throws IllegalArgumentException, DBException {
-    //TODO Non-auto-generated method stub.
-    // The @throws DBException has to be updated.
-    // I hope this is enough JavaDoc for you. ^.-
-    // Maybe you should create methods variations that
-    //  doesn't require as many parameter. 
-    
-    return null;
+  public List<Message> getLastNMessages(Conversation conv, Contact contact, long fromTime,
+      long toTime, int maxNumberOfMessages, boolean onlyUnsent)
+          throws DBException, IllegalArgumentException, NullPointerException {
+    Objects.requireNonNull(conv, "conv must not be null");
+    Objects.requireNonNull(contact, "contact must not be null");
+    return _getLastNMessages(conv, contact, fromTime, toTime, maxNumberOfMessages, onlyUnsent);
+  }
+  
+  /**
+   * Get a specific amount of messages in the database.
+   * Only messages with fitting criteria will be returned.
+   * 
+   * @param conversation 
+   *    Specifies the conversation of the messages.<br>
+   *    Only messages that are in the given conversation 
+   *    will be returned.<br>
+   * @param fromTime
+   *    Specifies the start of the time span (in UNIX time)
+   *    in which the messages were created.<br>
+   * @param toTime
+   *    Specifies the end of the time span (in UNIX time) 
+   *    in which the messages were created.<br>
+   * @param maxNumberOfMessages
+   *    Specifies the maximum number of messages that will
+   *    be returned.<br>
+   * @param onlyUnsent
+   *    If <code>true</code>, only messages that aren't 
+   *    sent will be returned.
+   * 
+   * @return 
+   *    A <code>List</code> of {@link Message}s that fit
+   *    the given criteria.
+   *    
+   * @throws DBException
+   *    If a database exception occurs.
+   * @throws IllegalArgumentException
+   *    If the values of <code>fromTime</code> is bigger than
+   *    <code>toTime</code> or one of the two values is smaller 
+   *    than <code>0</code> <b>or</b> the value of
+   *    <code>maxNumberOfMessages</code> is equal to or smaller than
+   *    <code>0</code>.
+   * @throws NullPointerException
+   *    If either contact or conv are <code>null</code>.
+   */
+  public List<Message> getLastNMessages(Conversation conv, long fromTime,
+      long toTime, int maxNumberOfMessages, boolean onlyUnsent)
+          throws DBException, IllegalArgumentException, NullPointerException {
+    Objects.requireNonNull(conv, "conv must not be null");
+    return _getLastNMessages(conv, null, fromTime, toTime, maxNumberOfMessages, onlyUnsent);
+  }
+  
+  /**
+   * Get a specific amount of messages in the database.
+   * Only messages with fitting criteria will be returned.
+   * 
+   * @param contact 
+   *    Specifies the contact that sent the messages.<br>
+   *    Only messages that were sent by the given contact
+   *    will be returned.<br>
+   * @param fromTime
+   *    Specifies the start of the time span (in UNIX time)
+   *    in which the messages were created.<br>
+   * @param toTime
+   *    Specifies the end of the time span (in UNIX time) 
+   *    in which the messages were created.<br>
+   * @param maxNumberOfMessages
+   *    Specifies the maximum number of messages that will
+   *    be returned.<br>
+   * @param onlyUnsent
+   *    If <code>true</code>, only messages that aren't 
+   *    sent will be returned.
+   * 
+   * @return 
+   *    A <code>List</code> of {@link Message}s that fit
+   *    the given criteria.
+   *    
+   * @throws DBException
+   *    If a database exception occurs.
+   * @throws IllegalArgumentException
+   *    If the values of <code>fromTime</code> is bigger than
+   *    <code>toTime</code> or one of the two values is smaller 
+   *    than <code>0</code> <b>or</b> the value of
+   *    <code>maxNumberOfMessages</code> is equal to or smaller than
+   *    <code>0</code>.
+   * @throws NullPointerException
+   *    If either contact or conv are <code>null</code>.
+   */
+  public List<Message> getLastNMessages(Contact contact, long fromTime,
+      long toTime, int maxNumberOfMessages, boolean onlyUnsent)
+          throws DBException, IllegalArgumentException, NullPointerException {
+    Objects.requireNonNull(contact, "contact must not be null");
+    return _getLastNMessages(null, contact, fromTime, toTime, maxNumberOfMessages, onlyUnsent);
+  }
+  
+  /**
+   * Get a specific amount of messages in the database.
+   * Only messages with fitting criteria will be returned.
+   * 
+   * @param conversation 
+   *    Specifies the conversation of the messages.<br>
+   *    Only messages that are in the given conversation 
+   *    will be returned.<br>
+   * @param fromTime
+   *    Specifies the start of the time span (in UNIX time)
+   *    in which the messages were created.<br>
+   * @param maxNumberOfMessages
+   *    Specifies the maximum number of messages that will
+   *    be returned.<br>
+   * @param onlyUnsent
+   *    If <code>true</code>, only messages that aren't 
+   *    sent will be returned.
+   * 
+   * @return 
+   *    A <code>List</code> of {@link Message}s that fit
+   *    the given criteria.
+   *    
+   * @throws DBException
+   *    If a database exception occurs.
+   * @throws IllegalArgumentException
+   *    If the values of <code>fromTime</code> is bigger than
+   *    <code>toTime</code> or one of the two values is smaller 
+   *    than <code>0</code> <b>or</b> the value of
+   *    <code>maxNumberOfMessages</code> is equal to or smaller than
+   *    <code>0</code>.
+   * @throws NullPointerException
+   *    If either contact or conv are <code>null</code>.
+   */
+  public List<Message> getLastNMessages(Conversation conv, long fromTime,
+      int maxNumberOfMessages, boolean onlyUnsent)
+          throws DBException, IllegalArgumentException, NullPointerException {
+    Objects.requireNonNull(conv, "conv must not be null");
+    return _getLastNMessages(conv, null, fromTime, Long.MAX_VALUE, maxNumberOfMessages, onlyUnsent);
+  }
+  
+  /**
+   * Get a specific amount of messages in the database.
+   * Only messages with fitting criteria will be returned.
+   * 
+   * @param contact 
+   *    Specifies the contact that sent the messages.<br>
+   *    Only messages that were sent by the given contact
+   *    will be returned.<br>
+   * @param fromTime
+   *    Specifies the start of the time span (in UNIX time)
+   *    in which the messages were created.<br>
+   * @param maxNumberOfMessages
+   *    Specifies the maximum number of messages that will
+   *    be returned.<br>
+   * @param onlyUnsent
+   *    If <code>true</code>, only messages that aren't 
+   *    sent will be returned.
+   * 
+   * @return 
+   *    A <code>List</code> of {@link Message}s that fit
+   *    the given criteria.
+   *    
+   * @throws DBException
+   *    If a database exception occurs.
+   * @throws IllegalArgumentException
+   *    If the values of <code>fromTime</code> is bigger than
+   *    <code>toTime</code> or one of the two values is smaller 
+   *    than <code>0</code> <b>or</b> the value of
+   *    <code>maxNumberOfMessages</code> is equal to or smaller than
+   *    <code>0</code>.
+   * @throws NullPointerException
+   *    If either contact or conv are <code>null</code>.
+   */
+  public List<Message> getLastNMessages(Contact contact, long fromTime,
+      int maxNumberOfMessages, boolean onlyUnsent)
+          throws DBException, IllegalArgumentException, NullPointerException {
+    Objects.requireNonNull(contact, "contact must not be null");
+    return _getLastNMessages(null, contact, fromTime, Long.MAX_VALUE,
+        maxNumberOfMessages, onlyUnsent);
   }
   
   /**
@@ -535,12 +679,13 @@ public class Database implements AutoCloseable {
   }
   
   private static void createMessagesTable(Statement stmt) throws SQLException {
-    //COLUMNS: | id | content | sender_id | conversation_id | sent |
+    //COLUMNS: | id | content | sender_id | conversation_id | timestamp | sent |
     String sql = "CREATE TABLE "+MESSAGES_TABLE
         + "(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
         + "content TEXT NOT NULL,"
         + "sender_id INTEGER NOT NULL,"
         + "conversation_id INTEGER NOT NULL,"
+        + "timestamp INTEGER NOT NULL,"
         + "sent INTEGER NOT NULL);";
     stmt.executeUpdate(sql);
   }
@@ -675,8 +820,76 @@ public class Database implements AutoCloseable {
     }
   }
   
-  private Conversation getConversation(int id) throws DBException {
-    return getConversation(getConversationUuid(id));
+  //private Conversation getConversation(int id) throws DBException {
+  //  return getConversation(getConversationUuid(id));
+  //}
+  
+  private List<Message> _getLastNMessages(Conversation conversation, Contact contact, long fromTime, 
+      long toTime, int maxNumberOfMessages, boolean onlyUnsent) 
+          throws IllegalArgumentException, DBException {
+    
+    //Messages:
+    //| id | content | sender_id | conversation_id | timestamp | sent |
+    if (!(maxNumberOfMessages > 0)) {
+      throw new IllegalArgumentException("NumberOfMessages for getLastNMessages(int,boolean) "+
+                                         "must be greater than 0. maxNumberOfMessages = "
+                                         +maxNumberOfMessages);
+    }
+    if (fromTime < 0) {
+      throw new IllegalArgumentException("fromTime must be positive. fromTime = "+fromTime);
+    }
+    if (toTime < 0) {
+      throw new IllegalArgumentException("toTime must be positive. toTime = "+toTime);
+    }
+    if (fromTime > toTime) {
+      throw new IllegalArgumentException("fromTime must be smaller than toTime. fromTime = "
+                                         +fromTime+" toTime = "+toTime);
+    }
+    
+    try (Statement stmt = conn.createStatement();) {
+      StringBuilder sql = new StringBuilder(128);
+      StringBuilder condition = new StringBuilder(64);
+      condition.append("timestamp >= ").append(fromTime).append(" AND timestamp < ").append(toTime)
+          .append(" AND ");
+      if (conversation != null) {
+        condition.append("conversation_id = ").append(getConversationId(
+            new EscapedString(conversation.getUUID()))).append(" AND ");
+      }
+      if (contact != null) {
+        condition.append("contact_id = ").append(getContactId(
+            new EscapedString(contact.getUUID()))).append(" AND ");
+      }
+      if (onlyUnsent) {
+        condition.append("sent > 0");
+      }
+      
+      if (condition.substring(condition.length() - " AND ".length(), condition.length()) == " AND ") {
+        condition.delete(condition.length() - " AND ".length(), condition.length());
+      }
+      
+      sql.append("SELECT * FROM "+MESSAGES_TABLE+" WHERE ").append(condition).append(" LIMIT ")
+          .append(maxNumberOfMessages).append(" ORDER BY timestamp ASC;");
+      
+      ResultSet rs = stmt.executeQuery(sql.toString());
+      LinkedList<Message> results = new LinkedList<Message>();
+      
+      while (rs.next()) {
+        String content = rs.getString("content");
+        int sender_id = rs.getInt("sender_id");
+        int conversation_id = rs.getInt("conversation_id");
+        int sent = rs.getInt("sent");
+        int id = rs.getInt("id");
+        long timestamp = rs.getLong("timestamp");
+        assert sent >= 0: "Fatal error: sent_int must be bigger than 0, but is "+sent;
+        results.add(new InternalMessage(content, getConversationUuid(conversation_id),
+            getContactUuid(sender_id), timestamp, id, sent));
+      }
+      
+      return results;
+    } catch (FormatException|SQLException e) {
+      throw new DBException(e.getMessage());
+    }
+    
   }
   
   private void createTables() throws SQLException {
