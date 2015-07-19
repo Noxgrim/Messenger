@@ -41,12 +41,47 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    * Whether the Message has been sent.<br>
    * (Will not be saved in the formatted Message String.)
    */
-  private boolean sent = false;
+  private int sent = -1;
   /**
    * ID in database for easier identifying. (Will not be saved in the formatted Message String.)
    */
   private int dbId = -1;
 
+  
+  /**
+   * Constructs a new <code>Message</code>.
+   * 
+   * @param text The content of the Message
+   * @param uuidConversation The UUID of the Conversation.
+   * @param uuidSender The UUID of the sender.
+   * @param command Whether the Message is a command.
+   * @param timeStamp The time stamp of the Message.
+   * @param databaseID ID of the Message in the database.<br>
+   *        <code>-1</code> if no ID is set.
+   * @param sent Whether this Message is sent.
+   * @throws FormatException if the content length is invalid.
+   */
+  public InternalMessage(String text, String uuidConversation,
+      String uuidSender, boolean command, long timeStamp, int databaseID, int sent) throws FormatException {
+    if (!contentIsValid(text)) {
+      throw new FormatException("Message invalid.");
+    }
+
+    content = text;
+    this.uuidConversation = uuidConversation;
+    this.uuidSender = uuidSender;
+    this.command = command;
+
+    this.timeStamp = new GregorianCalendar();
+    this.timeStamp.setTimeInMillis(timeStamp);
+    dbId = databaseID > -1 ? databaseID : -1;
+    this.sent = sent > -1 ? sent : -1;
+  }
+
+  public InternalMessage(String text, String uuidConversation,
+      String uuidSender, long timestamp, int databaseID, int sent) throws FormatException {
+    this(text, uuidConversation, uuidSender, text.charAt(0) == '/', timestamp, databaseID, sent);
+  }
 
   /**
    * Constructs a new <code>Message</code>.
@@ -62,19 +97,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    */
   public InternalMessage(String text, String uuidConversation, String uuidSender, boolean command,
       long timeStamp, int databaseID) throws FormatException {
-
-    if (!contentIsValid(text)) {
-      throw new FormatException("Message invalid.");
-    }
-
-    content = text;
-    this.uuidConversation = uuidConversation;
-    this.uuidSender = uuidSender;
-    this.command = command;
-
-    this.timeStamp = new GregorianCalendar();
-    this.timeStamp.setTimeInMillis(timeStamp);
-    dbId = databaseID > -1 ? databaseID : -1;
+    this(text, uuidConversation, uuidSender, command, timeStamp, databaseID, -1);
   }
 
   /**
@@ -89,15 +112,9 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    */
   public InternalMessage(String text, String uuidConversation, String uuidSender, boolean command,
       long timeStamp) throws FormatException {
-    this(text, uuidConversation, uuidSender, command, timeStamp, -1);
+    this(text, uuidConversation, uuidSender, command, timeStamp, -1, -1);
   }
   
-  public InternalMessage(String text, String uuidConversation,
-      String uuidSender, long timestamp, int databaseID, int sent) throws FormatException {
-    //TODO I need this constructor...
-    throw new UnsupportedOperationException("not yet implemented…");
-  }
-
   /**
    * Constructs a new <code>Message</code> with the current time and <code>-1</code> database ID.
    * 
@@ -109,7 +126,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    */
   public InternalMessage(String text, String uuidConversation, String uuidSender, boolean command)
       throws FormatException {
-    this(text, uuidConversation, uuidSender, command, System.currentTimeMillis() / 1000L, -1);
+    this(text, uuidConversation, uuidSender, command, System.currentTimeMillis() / 1000L, -1, -1);
   }
 
   /**
@@ -124,7 +141,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   public InternalMessage(String text, String uuidConversation, String uuidSender)
       throws FormatException {
     this(text, uuidConversation, uuidSender, text.charAt(0) == '/',
-        System.currentTimeMillis() / 1000L, -1);
+        System.currentTimeMillis() / 1000L, -1, -1);
   }
 
 
@@ -166,7 +183,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    * @return whether this Message has been sent.
    */
   public boolean isSent() {
-    return sent;
+    return sent > 0;
   }
 
   /**
@@ -310,8 +327,8 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
   /**
    * @param sent whether this Message has been sent.
    */
-  public void setSent(boolean sent) {
-    this.sent = sent;
+  public void setSent(int sent) {
+    this.sent = sent > 0 ? sent : 0;
   }
 
   /**
