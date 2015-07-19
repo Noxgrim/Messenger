@@ -770,35 +770,60 @@ public class Settings {
     boolean filePath() default false;
   }
 
+  /**
+   * Represent a field that can be saved and/or loaded by a class.<br>
+   * Contains all important extra information of this field and is comparable
+   * (mostly for sorting purposes).<br>
+   * All extra information is defined by the {@link Data} annotation.
+   */
   public static class FieldData implements Comparable<FieldData> {
 
+    /** Describing field. */
     private Field field;
 
+    /** Name of field's getter. */
     private String getter;
+    /** Name of field's setter. */
     private String setter;
+    /** Additional comment of this field. */
     private String comment;
 
+    /** Whether this field is accessible. */
     private boolean accessible;
+    /** Whether this field can be loaded. */
     private boolean loadable;
+    /** Whether this field can be saved. */
     private boolean saveable;
 
+    /**
+     * Constructs a new FieldData with the Data annotation of the field
+     * as Data annotation.
+     * 
+     * @param field The field to use.
+     */
     public FieldData(Field field) {
       this(field, field.getDeclaredAnnotation(Data.class));
     }
 
-    public FieldData(Field field, Data ioh) {
+    /**
+     * Constructs a new FieldData with a set field and Data annotation.
+     * 
+     * @param field The field to be used.
+     * @param data The Data annotation to be used.
+     */
+    public FieldData(Field field, Data data) {
       this.field = field;
 
-      accessible = !Modifier.isFinal(field.getModifiers()) && ioh != null;
+      accessible = !Modifier.isFinal(field.getModifiers()) && data != null;
 
       String fieldName =
           Character.toUpperCase(field.getName().charAt(0))
               + field.getName().substring(1, field.getName().length());
 
-      if (ioh != null) {
-        getter = ioh.getter();
-        setter = ioh.setter();
-        comment = ((!ioh.comment().isEmpty()) ? " #" + ioh.comment() : "");
+      if (data != null) {
+        getter = data.getter();
+        setter = data.setter();
+        comment = ((!data.comment().isEmpty()) ? " #" + data.comment() : "");
 
         if (getter.isEmpty())
           getter = "get" + fieldName;
@@ -806,8 +831,8 @@ public class Settings {
           setter = "set" + fieldName;
 
 
-        loadable = ioh.load() && accessible;
-        saveable = ioh.save() && accessible;
+        loadable = data.load() && accessible;
+        saveable = data.save() && accessible;
       } else {
 
 
@@ -820,46 +845,97 @@ public class Settings {
       }
     }
 
+    /**
+     * @return the field of this FieldData.
+     */
     public Field getField() {
       return field;
     }
 
+    /**
+     * @return the getter of this FieldData.
+     */
     public String getGetter() {
       return getter;
     }
 
+    /**
+     * @return the setter of this FieldData.
+     */
     public String getSetter() {
       return setter;
     }
 
+    /**
+     * @return the comment of this FieldData.
+     */
     public String getComment() {
       return comment;
     }
 
+    /**
+     * @return the Data annotation of this FieldData.
+     */
     public Data getData() {
       return field.getDeclaredAnnotation(Data.class);
     }
 
+    /**
+     * @return 
+     *  Whether this FiedData can be loaded.<br>
+     *  A field can be loaded if it's accessible and the Data annotation 
+     *  specifies that it can be loaded
+     *  
+     * @see FieldData#isAccessible()
+     */
     public boolean isLoadable() {
       return loadable;
     }
 
+    /**
+     * @return 
+     *  Whether this FiedData can be saved.<br>
+     *  A field can be saved if it's accessible and the Data annotation 
+     *  specifies that it can be saved.
+     *  
+     * @see FieldData#isAccessible()
+     */
     public boolean isSaveable() {
       return saveable;
     }
 
+    /**
+     * @return 
+     *  Whether this FiedData is accessible.<br>
+     *  A field is accessible if it has a Data annotation and isn't final.
+     */
     public boolean isAccessible() {
       return accessible;
     }
 
     /**
-     * Compares the names.
+     * Compares the names of the two FieldData objects.
      */
     @Override
     public int compareTo(FieldData o) {
       return this.field.getName().compareTo(o.field.getName());
     }
 
+    /**
+     * Gets the saved spelling of the name of the field.<br>
+     * The name of the field is split with each camel case
+     * letter and the words are divided by dashes.<br>
+     * For example:
+     * <pre>
+     *  "programStatusWord"
+     * </pre>
+     * becomes
+     * <pre>
+     *  "program-status-word"
+     * </pre>
+     * 
+     * @return the saved spelling of this FieldData.
+     */
     public String getSavedSpelling() {
       String name = "", fieldName = field.getName();
       for (char c : fieldName.toCharArray())
@@ -873,6 +949,32 @@ public class Settings {
       return name;
     }
 
+    /**
+     * Tries to set the value of the field to the value in a String.<br>
+     * The field <b>has to have</b> a setter method in order to
+     * successfully execute.<br>
+     *   
+     * @param value
+     *  Every value inside <code>value</code> will be interpreted as the
+     *  needed type.<br>
+     *  Supported types: <code>boolean, byte, int, long, {@link BigInteger}, 
+     *  float, double, {@link BigDecimal}, {@link String}</code>
+     * @param obj the object the setter will be invoked on.
+     * 
+     * @throws NoSuchMethodException
+     *  If the setter of this FieldData does not exists in the specified object's 
+     *  class.
+     * @throws IllegalAccessException
+     *  thrown by {@link Method#invoke(Object, Object...)}.
+     * @throws InvocationTargetException
+     *  thrown by {@link Method#invoke(Object, Object...)}.
+     * @throws SecurityException
+     *  thrown by {@link Method#invoke(Object, Object...)}.
+     * @throws IllegalArgumentException
+     *  If the type of <code>value</code> is unknown.
+     * @throws NumberFormatException
+     *  If <code>value</code> couldn't be converted to a number.
+     */
     public void invoke(String value, Object obj) throws NoSuchMethodException,
         IllegalAccessException, IllegalArgumentException, InvocationTargetException,
         SecurityException, NumberFormatException {
@@ -922,6 +1024,14 @@ public class Settings {
 
     }
 
+    /**
+     * Returns a sorted List of FieldData objects of all accessible fields in a class.<br>
+     * A field is accessible if it has a Data annotation and isn't final.
+     * 
+     * @param clazz the class from which the fields are taken.
+     * 
+     * @return a List of FieldData objects.
+     */
     public static List<FieldData> getAccessibleFields(Class<? extends Object> clazz) {
       ArrayList<FieldData> list = new ArrayList<FieldData>();
 
@@ -934,6 +1044,15 @@ public class Settings {
       return list;
     }
 
+    /**
+     * Returns a sorted List of FieldData objects of all fields that can be saved in a class.<br>
+     * A field can be saved if it's accessible and the Data annotation specifies that it can be 
+     * saved.
+     * 
+     * @param clazz the class from which the fields are taken.
+     * 
+     * @return a List of FieldData objects.
+     */
     public static List<FieldData> getSaveableFields(Class<?> clazz) {
       ArrayList<FieldData> list = new ArrayList<FieldData>();
 
@@ -946,6 +1065,15 @@ public class Settings {
       return list;
     }
 
+    /**
+     * Returns a sorted List of FieldData objects of all fields that can be loaded in a class.<br>
+     * A field can be loaded if it's accessible and the Data annotation specifies that it can be 
+     * loaded.
+     * 
+     * @param clazz the class from which the fields are taken.
+     * 
+     * @return a List of FieldData objects.
+     */
     public static List<FieldData> getLoadableFields(Class<?> clazz) {
       ArrayList<FieldData> list = new ArrayList<FieldData>();
 
@@ -958,6 +1086,17 @@ public class Settings {
       return list;
     }
 
+    /**
+     * Searches for a field with the given saved spelling in a class.
+     * 
+     * @param savedSpelling the saved spelling for which is searched for.
+     * @param clazz the class in which is searched for the field.
+     * 
+     * @return a fitting FieldData object.
+     * 
+     * @throws NoSuchFieldException
+     *  If no field with that saved spelling exists within the given class.
+     */
     public static FieldData getBySavedSpelling(String savedSpelling, Class<?> clazz)
         throws NoSuchFieldException {
 
