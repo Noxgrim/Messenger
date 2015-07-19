@@ -113,7 +113,7 @@ public class Database implements AutoCloseable {
    * @param id
    *   The message's ID.
    * @throws IllegalArgumentException
-   *   if id < 0
+   *   if <code>id</code> < 0
    */
   public void incrementSent(int id) throws DBException {
     if (id < 0) {
@@ -137,25 +137,11 @@ public class Database implements AutoCloseable {
    * @throws DBException 
    * 
    * @throws IllegaArgumentException
-   *   If numberOfMessages <= 0
+   *   If <code>numberOfMessages</code> <= 0
+   * @throws DBException
    */
   public List<Message> getLastNMessages(int maxNumberOfMessages, boolean onlyUnsent) throws DBException {
     return _getLastNMessages(null, null, 0, Long.MAX_VALUE, maxNumberOfMessages, onlyUnsent);    
-  }
-  
-  /**
-   * Get a specific amount of the last messages in the database.
-   * @param numberOfMessages
-   * @return
-   *   A <code>List</code> of <code>Message</code>s
-   * @throws DBException 
-   * 
-   * @throws IllegaArgumentException
-   *   If numberOfMessages <= 0
-   */
-  public List<Message> getLastNMessages(int numberOfMessages) throws DBException {
-    //TODO Should be integrated in advanced method.
-    return getLastNMessages(numberOfMessages, false);
   }
   
   /**
@@ -214,6 +200,50 @@ public class Database implements AutoCloseable {
    *    Specifies the conversation of the messages.<br>
    *    Only messages that are in the given conversation 
    *    will be returned.<br>
+   * @param contact 
+   *    Specifies the contact that sent the messages.<br>
+   *    Only messages that were sent by the given contact
+   *    will be returned.<br>
+   * @param fromTime
+   *    Specifies the start of the time span (in UNIX time)
+   *    in which the messages were created.<br>
+   * @param maxNumberOfMessages
+   *    Specifies the maximum number of messages that will
+   *    be returned.<br>
+   * @param onlyUnsent
+   *    If <code>true</code>, only messages that aren't 
+   *    sent will be returned.
+   * 
+   * @return 
+   *    A <code>List</code> of {@link Message}s that fit
+   *    the given criteria.
+   *    
+   * @throws DBException
+   *    If a database exception occurs.
+   * @throws IllegalArgumentException
+   *    If <code>fromTime</code> is smaller than <code>0</code> <b>or</b> the value of
+   *    <code>maxNumberOfMessages</code> is equal to or smaller than
+   *    <code>0</code>.
+   * @throws NullPointerException
+   *    If either <code>contact</code> or <code>conv</code> are <code>null</code>.
+   */
+  public List<Message> getLastNMessages(Conversation conv, Contact contact, long fromTime,
+      int maxNumberOfMessages, boolean onlyUnsent)
+          throws DBException, IllegalArgumentException, NullPointerException {
+    Objects.requireNonNull(conv, "conv must not be null");
+    Objects.requireNonNull(contact, "contact must not be null");
+    return _getLastNMessages(conv, contact, fromTime, Long.MAX_VALUE,
+        maxNumberOfMessages, onlyUnsent);
+  }
+  
+  /**
+   * Get a specific amount of messages in the database.
+   * Only messages with fitting criteria will be returned.
+   * 
+   * @param conversation 
+   *    Specifies the conversation of the messages.<br>
+   *    Only messages that are in the given conversation 
+   *    will be returned.<br>
    * @param fromTime
    *    Specifies the start of the time span (in UNIX time)
    *    in which the messages were created.<br>
@@ -240,7 +270,7 @@ public class Database implements AutoCloseable {
    *    <code>maxNumberOfMessages</code> is equal to or smaller than
    *    <code>0</code>.
    * @throws NullPointerException
-   *    If either contact or conv are <code>null</code>.
+   *    If <code>conv</code> is <code>null</code>.
    */
   public List<Message> getLastNMessages(Conversation conv, long fromTime,
       long toTime, int maxNumberOfMessages, boolean onlyUnsent)
@@ -283,7 +313,7 @@ public class Database implements AutoCloseable {
    *    <code>maxNumberOfMessages</code> is equal to or smaller than
    *    <code>0</code>.
    * @throws NullPointerException
-   *    If either contact or conv are <code>null</code>.
+   *    If <code>contact</code> is <code>null</code>.
    */
   public List<Message> getLastNMessages(Contact contact, long fromTime,
       long toTime, int maxNumberOfMessages, boolean onlyUnsent)
@@ -317,13 +347,11 @@ public class Database implements AutoCloseable {
    * @throws DBException
    *    If a database exception occurs.
    * @throws IllegalArgumentException
-   *    If the values of <code>fromTime</code> is bigger than
-   *    <code>toTime</code> or one of the two values is smaller 
-   *    than <code>0</code> <b>or</b> the value of
+   *    If fromTime is smaller than <code>0</code> <b>or</b> the value of
    *    <code>maxNumberOfMessages</code> is equal to or smaller than
    *    <code>0</code>.
    * @throws NullPointerException
-   *    If either contact or conv are <code>null</code>.
+   *    If <code>conv</code> is <code>null</code>.
    */
   public List<Message> getLastNMessages(Conversation conv, long fromTime,
       int maxNumberOfMessages, boolean onlyUnsent)
@@ -357,16 +385,15 @@ public class Database implements AutoCloseable {
    * @throws DBException
    *    If a database exception occurs.
    * @throws IllegalArgumentException
-   *    If the values of <code>fromTime</code> is bigger than
-   *    <code>toTime</code> or one of the two values is smaller 
+   *    If <code>fromTime</code> is smaller 
    *    than <code>0</code> <b>or</b> the value of
    *    <code>maxNumberOfMessages</code> is equal to or smaller than
    *    <code>0</code>.
    * @throws NullPointerException
-   *    If either contact or conv are <code>null</code>.
+   *    If <code>contact</code> is <code>null</code>.
    */
-  public List<Message> getLastNMessages(Contact contact, long fromTime,
-      int maxNumberOfMessages, boolean onlyUnsent)
+  public List<Message> getLastNMessages(Contact contact, long fromTime, int maxNumberOfMessages,
+      boolean onlyUnsent)
           throws DBException, IllegalArgumentException, NullPointerException {
     Objects.requireNonNull(contact, "contact must not be null");
     return _getLastNMessages(null, contact, fromTime, Long.MAX_VALUE,
@@ -404,7 +431,7 @@ public class Database implements AutoCloseable {
         throw new DBException("The UUID already exists within the database.");
       }
       rs.close();
-      pstmt.executeUpdate(sql);
+      pstmt.executeUpdate();
     } catch (SQLException e) {
       throw new DBException("Adding contact failed: "+e.getMessage());
     }
@@ -421,11 +448,29 @@ public class Database implements AutoCloseable {
    *    overwritten.
    *    
    * @throws DBException
-   *    If a database exception occurs.
+   *    If a database exception occurs or the UUID is not in the database.
    */
   public void editContact(String contactUuid, Contact newContact) throws DBException {
-    // TODO Non-auto-generated method stub.
-    // The @throws DBException has to be updated.
+    //Contacts:
+    // | id | name | uuid | public_key | address |
+    int id = getContactId(new EscapedString(contactUuid));
+    StringBuilder sql = new StringBuilder(64);
+    
+    EscapedString name = new EscapedString(newContact.getNickname());
+    EscapedString uuid = new EscapedString(newContact.getUUID());
+    EscapedString public_key = new EscapedString(newContact.getPublicKey());
+    
+    sql.append("UPDATE "+CONTACTS_TABLE+" SET name = ").append(name.toQuotedString())
+        .append(", uuid = ").append(uuid.toQuotedString()).append(", public_key = ")
+        .append(public_key.toQuotedString()).append(", address = ? WHERE id = ").append(id)
+        .append(";");
+    try (PreparedStatement pstmt = conn.prepareStatement(sql.toString());){
+      Blob address = getSerializedBlob(newContact.getAddress());
+      pstmt.setBlob(1, address);
+      pstmt.executeUpdate();
+    } catch (SQLException e) {
+      throw new DBException("Editing contact with id "+id+" failed: "+e.getMessage());
+    }
   }
   
   /**
