@@ -56,13 +56,13 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    * @param uuidSender The UUID of the sender.
    * @param command Whether the Message is a command.
    * @param timeStamp The time stamp of the Message.
-   * @param databaseID ID of the Message in the database.<br>
+   * @param databaseId ID of the Message in the database.<br>
    *        <code>-1</code> if no ID is set.
    * @param sent Whether this Message is sent.
    * @throws FormatException if the content length is invalid.
    */
   public InternalMessage(String text, String uuidConversation,
-      String uuidSender, boolean command, long timeStamp, int databaseID, int sent) throws FormatException {
+      String uuidSender, boolean command, long timeStamp, int databaseId, int sent) throws FormatException {
     if (!contentIsValid(text)) {
       throw new FormatException("Message invalid.");
     }
@@ -74,13 +74,24 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
 
     this.timeStamp = new GregorianCalendar();
     this.timeStamp.setTimeInMillis(timeStamp);
-    dbId = databaseID > -1 ? databaseID : -1;
+    dbId = databaseId > -1 ? databaseId : -1;
     this.sent = sent > 0 ? sent : 0;
   }
 
+  /**
+   * Constructs a new <code>Message</code>.
+   * 
+   * @param text The content of the Message
+   * @param uuidConversation The UUID of the Conversation.
+   * @param uuidSender The UUID of the sender.
+   * @param timeStamp The time stamp of the Message.
+   * @param databaseId ID of the Message in the database.<br>
+   *        <code>-1</code> if no ID is set.
+   * @throws FormatException if the content length is invalid.
+   */
   public InternalMessage(String text, String uuidConversation,
-      String uuidSender, long timestamp, int databaseID, int sent) throws FormatException {
-    this(text, uuidConversation, uuidSender, text.charAt(0) == '/', timestamp, databaseID, sent);
+      String uuidSender, long timestamp, int databaseId, int sent) throws FormatException {
+    this(text, uuidConversation, uuidSender, text.charAt(0) == '/', timestamp, databaseId, sent);
   }
 
   /**
@@ -91,13 +102,13 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    * @param uuidSender The UUID of the sender.
    * @param command Whether the Message is a command.
    * @param timeStamp The time stamp of the Message.
-   * @param databaseID ID of the Message in the database.<br>
+   * @param databaseId ID of the Message in the database.<br>
    *        <code>-1</code> if no ID is set.
    * @throws FormatException if the content length is invalid.
    */
   public InternalMessage(String text, String uuidConversation, String uuidSender, boolean command,
-      long timeStamp, int databaseID) throws FormatException {
-    this(text, uuidConversation, uuidSender, command, timeStamp, databaseID, 0);
+      long timeStamp, int databaseId) throws FormatException {
+    this(text, uuidConversation, uuidSender, command, timeStamp, databaseId, 0);
   }
 
   /**
@@ -223,7 +234,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
 
   /**
    * @return the database ID of this Message.<br>
-   *         <code>-1</code> if no Id is set.
+   *         <code>-1</code> if no ID is set.
    */
   public int getDatabaseId() {
     return dbId;
@@ -346,7 +357,7 @@ public class InternalMessage implements Message, Comparable<InternalMessage> {
    * 
    * @param id the ID to be set.
    */
-  public void setDatabaseID(int id) {
+  public void setDatabaseId(int id) {
     dbId = id > -1 ? id : -1;
   }
 

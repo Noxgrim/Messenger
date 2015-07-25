@@ -412,7 +412,7 @@ public class Database implements AutoCloseable {
     //Contacts:
     //| id | name | uuid | public_key | address |
     EscapedString name = new EscapedString(c.getNickname());
-    EscapedString uuid = new EscapedString(c.getUUID());
+    EscapedString uuid = new EscapedString(c.getUuid());
     EscapedString public_key = new EscapedString(c.getPublicKey());
     Blob address;
     try {
@@ -457,7 +457,7 @@ public class Database implements AutoCloseable {
     StringBuilder sql = new StringBuilder(64);
     
     EscapedString name = new EscapedString(newContact.getNickname());
-    EscapedString uuid = new EscapedString(newContact.getUUID());
+    EscapedString uuid = new EscapedString(newContact.getUuid());
     EscapedString public_key = new EscapedString(newContact.getPublicKey());
     
     sql.append("UPDATE "+CONTACTS_TABLE+" SET name = ").append(name.toQuotedString())
@@ -538,7 +538,7 @@ public class Database implements AutoCloseable {
     //| id | name | uuid | private_key | public_key |
     try (Statement stmt = conn.createStatement();) {
       EscapedString name = new EscapedString(u.getNickname());
-      EscapedString uuid = new EscapedString(u.getUUID());
+      EscapedString uuid = new EscapedString(u.getUuid());
       EscapedString private_key = new EscapedString(u.getPrivateKey());
       EscapedString public_key = new EscapedString(u.getPublicKey());
       String sql = "INSERT INTO "+USERS_TABLE + "(name,uuid,private_key,public_key) "
@@ -561,11 +561,11 @@ public class Database implements AutoCloseable {
     //Conversations:
     //| id | name | uuid | participants_uuids | host |
     EscapedString name = new EscapedString(c.getName());
-    EscapedString uuid = new EscapedString(c.getUUID());
+    EscapedString uuid = new EscapedString(c.getUuid());
     final int host = 1;
     Blob participants_uuids;
     try {
-      participants_uuids = getSerializedBlob((Serializable) c.getParticipantsIds());
+      participants_uuids = getSerializedBlob((Serializable) c.getParticipantsUuids());
     } catch (SQLException e) {
       throw new DBException("Adding conversation failed (serializing participants' IDs failed):"
           +e.getMessage());
@@ -598,9 +598,9 @@ public class Database implements AutoCloseable {
   //Conversations:
     //| id | name | uuid | participants_uuids | host |
     EscapedString name = new EscapedString(c.getName());
-    EscapedString uuid = new EscapedString(c.getUUID());
+    EscapedString uuid = new EscapedString(c.getUuid());
     final int host = 0;
-    EscapedString host_uuid = new EscapedString(c.getHost().getUUID());
+    EscapedString host_uuid = new EscapedString(c.getHost().getUuid());
     String sql = "INSERT INTO "+CONVERSATIONS_TABLE+"(name,uuid,participants_uuids,host) VALUES ("
         + name.toQuotedString() + "," + uuid.toQuotedString()+ ","+host_uuid.toQuotedString()+","
         + host + ");";
@@ -662,17 +662,17 @@ public class Database implements AutoCloseable {
   
   /**
    * Get a <code>Conversation</code> from the database by its UUID.
-   * @param convUUID
+   * @param convUuid
    *   <code>String</code> that contains the UUID
    * @return
    *   <code>Conversation</code>
    * @throws DBException
    */
-  public Conversation getConversation(String convUUID) throws DBException {
+  public Conversation getConversation(String convUuid) throws DBException {
     try (Statement stmt = conn.createStatement();) {
-      EscapedString escUUID = new EscapedString(convUUID);
+      EscapedString escUuid = new EscapedString(convUuid);
       String sql = "SELECT * FROM "+CONVERSATIONS_TABLE+" WHERE uuid = "
-          +escUUID.toQuotedString()+";";
+          +escUuid.toQuotedString()+";";
       ResultSet rs = stmt.executeQuery(sql);
       int count = 0;
       while(rs.next()) {
@@ -898,11 +898,11 @@ public class Database implements AutoCloseable {
           .append(" AND ");
       if (conversation != null) {
         condition.append("conversation_id = ").append(getConversationId(
-            new EscapedString(conversation.getUUID()))).append(" AND ");
+            new EscapedString(conversation.getUuid()))).append(" AND ");
       }
       if (contact != null) {
         condition.append("contact_id = ").append(getContactId(
-            new EscapedString(contact.getUUID()))).append(" AND ");
+            new EscapedString(contact.getUuid()))).append(" AND ");
       }
       if (onlyUnsent) {
         condition.append("sent > 0");

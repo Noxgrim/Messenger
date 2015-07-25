@@ -35,7 +35,7 @@ public class HostConversation extends Conversation {
     
     for (Contact c: Core.instance.getDatabase().getContacts())
       for (String s : participants)
-        if (c.getUUID().equals(s) && !this.participants.contains(c))
+        if (c.getUuid().equals(s) && !this.participants.contains(c))
           this.participants.add(c);
   }
 
@@ -86,7 +86,7 @@ public class HostConversation extends Conversation {
    * @throws FormatException if the message is invalid.
    */
   public boolean sendMessage(String message) throws FormatException {
-    return this.sendMessage(new InternalMessage(message, this.uuid, Core.getInstance().getUser().getUUID()));
+    return this.sendMessage(new InternalMessage(message, this.uuid, Core.getInstance().getUser().getUuid()));
   }
 
   /**
@@ -110,13 +110,13 @@ public class HostConversation extends Conversation {
   }
 
   @Override
-  public List<String> getParticipantsIds() {
+  public List<String> getParticipantsUuids() {
     // TODO Auto-generated method stub
     return null;
   }
   
   @Override
-  public void logMessage(InternalMessage im) {
+  public void saveMessage(InternalMessage im) {
     // TODO Auto-generated method stub
     
   }

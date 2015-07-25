@@ -23,7 +23,7 @@ public class SlashEscapeCommand extends Command {
 
     try {
       return Core.getInstance().getConversationManager().getActiveConversation()
-          .sendMessage(new InternalMessage('/' + msg, Core.getInstance().getConversationManager().getActiveConversation().getUUID(), Core.getInstance().getUser().getUUID(), false));
+          .sendMessage(new InternalMessage('/' + msg, Core.getInstance().getConversationManager().getActiveConversation().getUuid(), Core.getInstance().getUser().getUuid(), false));
     } catch (FormatException e) {
       Core.getInstance().getUserInterface()
           .printError("An internal Error occured while performing this Command!", e);

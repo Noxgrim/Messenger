@@ -18,7 +18,7 @@ public class GuestConversation extends Conversation {
     this.host = host;
   }
   
-  public GuestConversation(String uuid, String name, List<String> participantsIds) {
+  public GuestConversation(String uuid, String name, List<String> participantsUuids) {
     super(uuid, name);
   }
 
@@ -32,7 +32,7 @@ public class GuestConversation extends Conversation {
   @Override
   public boolean sendMessage(String message) throws FormatException {
     return sendMessage(new InternalMessage(message, this.uuid, Core.getInstance().getUser()
-        .getUUID()));
+        .getUuid()));
   }
 
   @Override
@@ -42,14 +42,14 @@ public class GuestConversation extends Conversation {
   }
 
   @Override
-  public List<String> getParticipantsIds() {
-    List<String> participantsIds = new LinkedList<String>();
-    participantsIds.add(host.getUUID());
-    return participantsIds;
+  public List<String> getParticipantsUuids() {
+    List<String> participantsUuids = new LinkedList<String>();
+    participantsUuids.add(host.getUuid());
+    return participantsUuids;
   }
   
   @Override
-  public void logMessage(InternalMessage im) {
+  public void saveMessage(InternalMessage im) {
     try {
       Core.instance.getDatabase().addMessage(im);
     } catch (DBException e) {

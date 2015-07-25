@@ -48,7 +48,7 @@ public class Contact {
         (nickname.length() <= nickLimit) ? nickname : nickname.substring(0, nickLimit + 1);
   }
 
-  public String getUUID() {
+  public String getUuid() {
     return uuid;
   }
 

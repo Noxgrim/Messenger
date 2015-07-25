@@ -25,8 +25,8 @@ public class CommandMessage implements Message {
 
     try {
       return new InternalMessage("/" + name + arguments, Core.getInstance()
-          .getConversationManager().getActiveConversation().getUUID(), Core.getInstance().getUser()
-          .getUUID());
+          .getConversationManager().getActiveConversation().getUuid(), Core.getInstance().getUser()
+          .getUuid());
     } catch (FormatException e) {
       Core.getInstance().getUserInterface().printError(e);
     }

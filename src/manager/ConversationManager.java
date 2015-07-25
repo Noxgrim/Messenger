@@ -20,7 +20,7 @@ public class ConversationManager {
 
   public Conversation getConversationByUuid(String uuid) throws UnknownUuidException {
     for (Conversation c : conversations)
-      if (c.getUUID().equals(uuid))
+      if (c.getUuid().equals(uuid))
         return c;
     try {
       Conversation c = Core.instance.getDatabase().getConversation(uuid);

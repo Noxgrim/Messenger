@@ -26,7 +26,7 @@ public class User {
 
 
 
-  public String getUUID() {
+  public String getUuid() {
     return uuid;
   }
 

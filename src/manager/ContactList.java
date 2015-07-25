@@ -25,7 +25,7 @@ public class ContactList {
   
   public Contact getContact(String uuid) throws DBException {
     for (Contact c : contacts)
-      if (c.getUUID().equals(uuid))
+      if (c.getUuid().equals(uuid))
         return c;
     return Core.getInstance().getDatabase().getContact(uuid);
   }

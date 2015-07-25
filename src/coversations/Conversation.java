@@ -60,7 +60,7 @@ public abstract class Conversation {
   /**
    * @return the UUID of the Conversation.
    */
-  public String getUUID() {
+  public String getUuid() {
     return uuid;
   }
   
@@ -72,9 +72,9 @@ public abstract class Conversation {
   }
   
   /**
-   * @return get the IDs of the participants of this Conversation.
+   * @return get the UUIDs of the participants of this Conversation.
    */
-  abstract public List<String> getParticipantsIds();
+  abstract public List<String> getParticipantsUuids();
 
   @Override
   public boolean equals(Object obj) {
@@ -86,7 +86,7 @@ public abstract class Conversation {
     return false;
   }
   
-  public abstract void logMessage(InternalMessage im);
+  public abstract void saveMessage(InternalMessage im);
 
 
 
