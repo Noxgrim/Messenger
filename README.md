@@ -2,7 +2,7 @@
  It's our first "big" project so please excuse design and/or coding flaws.
  
 ## Features
- The messenger will (hopefully) offer encrypted communication via GnuPG.
+ The messenger will offer encrypted communication via hybrid encryption (AES and RSA).
  You can use it via a terminal or a GUI. (Both modi are not finished yet.)
  
 ## Current State
