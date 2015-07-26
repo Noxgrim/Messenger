@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Objects;
 
 import persons.Contact;
-import persons.User;
 import coversations.Conversation;
 import coversations.GuestConversation;
 import coversations.HostConversation;
@@ -35,8 +34,6 @@ import exchange.Message;
  * | id | content | sender_id | conversation_id | timestamp | sent |
  * Contacts:
  * | id | name | uuid | public_key | address |
- * Users:
- * | id | name | uuid | private_key | public_key |
  * Conversations:
  * | id | name | uuid | participants_uuids | host |
  * (If the Conversation is a HostConversation, participants_uuids contains a list of the 
@@ -527,30 +524,6 @@ public class Database implements AutoCloseable {
   }
   
   /**
-   * Add a <code>User</code> to the database.
-   * @param u
-   *   <code>User</code>
-   * @return
-   * @throws DBException 
-   */
-  public void addUser(User u) throws DBException {
-    //Users:
-    //| id | name | uuid | private_key | public_key |
-    try (Statement stmt = conn.createStatement();) {
-      EscapedString name = new EscapedString(u.getNickname());
-      EscapedString uuid = new EscapedString(u.getUuid());
-      EscapedString private_key = new EscapedString(u.getPrivateKey());
-      EscapedString public_key = new EscapedString(u.getPublicKey());
-      String sql = "INSERT INTO "+USERS_TABLE + "(name,uuid,private_key,public_key) "
-          + "VALUES ("+name.toQuotedString()+","+uuid.toQuotedString()+","
-          + private_key.toQuotedString() + ","+ public_key.toQuotedString() +");";
-      stmt.executeUpdate(sql);
-    } catch (SQLException e) {
-      throw new DBException("Adding user to database failed: "+e.getMessage());
-    }
-  }
-  
-  /**
    * Add <code>HostConversation</code> to the database.
    * @param c
    *   <code>HostConversation</code>
@@ -746,17 +719,6 @@ public class Database implements AutoCloseable {
     stmt.executeUpdate(sql);
   }
   
-  private static void createUsersTable(Statement stmt) throws SQLException {
-    //COLUMNS: | id | name | uuid | private_key | public_key |
-    String sql = "CREATE TABLE "+CONTACTS_TABLE
-        + "(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
-        + "name TEXT NOT NULL,"
-        + "uuid TEXT NOT NULL,"
-        + "private_key TEXT NOT NULL,"
-        + "public_key TEXT NOT NULL);";
-    stmt.executeUpdate(sql);
-  }
-  
   private static void createConversationsTable(Statement stmt) throws SQLException {
     //COLUMNS: | id | name | participants_id | host |
     String sql = "CREATE TABLE "+CONTACTS_TABLE
@@ -772,7 +734,6 @@ public class Database implements AutoCloseable {
   private void assert_constants() {
     assert MESSAGES_TABLE != null && !MESSAGES_TABLE.isEmpty() && !MESSAGES_TABLE.contains("'");
     assert CONTACTS_TABLE != null && !CONTACTS_TABLE.isEmpty() && !CONTACTS_TABLE.contains("'");
-    assert USERS_TABLE != null && !USERS_TABLE.isEmpty() && !USERS_TABLE.contains("'");
     assert CONVERSATIONS_TABLE != null && !CONVERSATIONS_TABLE.isEmpty() 
         && !CONVERSATIONS_TABLE.contains("'");
   }
@@ -822,7 +783,7 @@ public class Database implements AutoCloseable {
   }
   
   private int getId(EscapedString uuid, String table) throws SQLException {
-    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE || table == USERS_TABLE || 
+    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE || 
         table == CONVERSATIONS_TABLE : "Trying to get ID of "
         +uuid.getUnescaped()+" in a nonexistant table: "+table;
     try (Statement stmt = conn.createStatement();) {
@@ -855,7 +816,7 @@ public class Database implements AutoCloseable {
   }
   
   private String getUuid(int id, String table) throws SQLException {
-    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE || table == USERS_TABLE || 
+    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE ||
         table == CONVERSATIONS_TABLE : "Trying to get UUID of "
         +id+" in a nonexistant table: "+table;
     try (Statement stmt = conn.createStatement();) {
@@ -941,7 +902,6 @@ public class Database implements AutoCloseable {
     try (Statement stmt = conn.createStatement();) {
       createMessagesTable(stmt);
       createContactsTable(stmt);
-      createUsersTable(stmt);
       createConversationsTable(stmt);
     }
   }
@@ -981,10 +941,9 @@ public class Database implements AutoCloseable {
   }
  
   
-  private Connection conn;
+  Connection conn;
   
-  private static String MESSAGES_TABLE = "messages";
-  private static String CONTACTS_TABLE = "contacts";
-  private static String USERS_TABLE = "users";
-  private static String CONVERSATIONS_TABLE = "conversations";
+  static String MESSAGES_TABLE = "messages";
+  static String CONTACTS_TABLE = "contacts";
+  static String CONVERSATIONS_TABLE = "conversations";
 }
