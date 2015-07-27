@@ -1,32 +1,11 @@
 package misc;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.net.InetAddress;
-import java.text.DateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
 
-import main.Core;
 import exceptions.FormatException;
+import main.Core;
 
 /**
  * A Settings object that will contain the settings of the program.<br>
@@ -50,12 +29,7 @@ import exceptions.FormatException;
  * <li>the 'print exceptions'-boolean
  * </ul>
  */
-public class Settings {
-
-  /**
-   * The location of the configuration file. Can be set via Command line arguments.
-   */
-  private String fileLocation;
+public class Settings extends ConfiguarionFile {
 
   /**
    * The character that separates the different sections of a Message from each other.<br>
@@ -64,112 +38,71 @@ public class Settings {
   private final char delimiter = '\u001D';
 
   /** The message length limit in characters. */
-  @Data(defVal = "4096")
+  @Data(defaultValue = "4096")
   private int msgLenLimit = 4096;
   /** The header length limit in characters. */
-  @Data(defVal = "256")
+  @Data(defaultValue = "256")
   private int headerLenLimit = 256;
   /** The nickname length limit in characters. */
-  @Data(defVal = "64")
+  @Data(defaultValue = "64") 
   private int nickLenLimit = 64;
   /** The length of the generated session key in bits. */
-  @Data(defVal = "128")
+  @Data(defaultValue = "128")
   private int sessionKeyLen = 128;
   /** The socket timeout time in milliseconds. */
-  @Data(defVal = "1000")
+  @Data(defaultValue = "1000")
   private int connectionTimeout = 1000;
 
   /**
    * The boolean that determines if the program starts in terminal or GUI mode.
    */
-  @Data(defVal = "false", getter = "getGuiMode", setter = "setGuiMode")
+  @Data(defaultValue = "false", getter = "getGuiMode", setter = "setGuiMode")
   private boolean gui = false;
   /** The boolean that determines if exceptions will be printed. */
-  @Data(defVal = "false", getter = "getPrintExceptions", setter = "setPrintExceptions")
+  @Data(defaultValue = "false", getter = "getPrintExceptions", setter = "setPrintExceptions")
   private boolean exceptions = false;
   /**
    * The boolean that determines if debug messages will be printed. Can be set via Command line
    * arguments.
    */
-  @Data(defVal = "false", save = false, load = false)
+  @Data(defaultValue = "false", save = false, load = false)
   private boolean debug = false;
   /** The boolean that determines if colors will be shown. */
-  @Data(defVal = "true", getter = "getColorShown", setter = "setColorShown")
+  @Data(defaultValue = "true", getter = "getColorShown", setter = "setColorShown")
   private boolean color = true;
 
   /** The nickname of the user. */
-  @Data(defVal = "MissingNo")
+  @Data(defaultValue = "MissingNo") 
   private String ownNick = null;
-  @Data(defVal = "localhost", load = false, comment = "Currrently unused.")
+  
+  @Data(defaultValue = "localhost", load = false, comment = "Currrently unused.") 
   private String host = null;
   /**
    * The port of the internal server.
    */
-  @Data(defVal = "1337")
+  @Data(defaultValue = "1337")
   private int port = 1337;
 
   /** Path to the SQLite database file. */
-  @Data(defVal = "./data/messengerDB.sqlite", filePath = true)
+  @Data(defaultValue = "./data/messengerDB.sqlite", filePath = true)
   private String dbLocation;
 
   /**
-   * Constructs a new {@code Settings } object and loads its values from the {@code messenger.cfg}
+   * Constructs a new {@code Settings } object and loads its values from the {@code messenger.conf}
    * file.
    */
   public Settings() {
-    this("load", "." + File.separatorChar + "data" + File.separatorChar + "messenger.cfg");
+    super("load", "." + File.separatorChar + "data" + File.separatorChar + "messenger.conf");
   }
 
   /**
    * Constructs a new {@code Settings} object.<br>
-   * <table>
-   * <tr>
-   * <th>Creation type</th>
-   * <th>Description</th>
-   * </tr>
-   * <tr>
-   * <td>{@code "load"}</td>
-   * <td>Loads the {@code Settings} from the {@code messenger.cfg} file.</td>
-   * </tr>
-   * <tr>
-   * <td>{@code "void"}</td>
-   * <td>Creates a {@code Settings} object that has no values attached to it.</td>
-   * </tr>
-   * <tr>
-   * <td>{@code "default"}</td>
-   * <td>Creates a {@code Settings} object with the default values. (default action)</td>
-   * </tr>
-   * </table>
    * 
-   * @param creationType The type of the creation. See above.
-   * @param fileLocation the location of the file that will be saved and loaded from.
+   * @see ConfiguarionFile#ConfiguarionFile(String, String)
    */
   public Settings(String creationType, String fileLocation) {
-    this.fileLocation = fileLocation;
+    super(creationType, fileLocation);
 
-    switch (creationType.toLowerCase()) {
-      case "load":
-        this.load();
-        break;
-      case "void":
-        break;
-      case "default":
-        this.setToDefault(false);
-        break;
-      default:
-        throw new IllegalArgumentException("\"" + creationType + "\" is not supported");
-    }
-
-  }
-
-  /**
-   * Constructs a {@code Settings} object from another.
-   * 
-   * @param from {@code Settings} used to construct this {@code Settings}.
-   */
-  public Settings(Settings from) {
-    this.setToDefault(false);
-    this.equalise(from);
   }
 
   /**
@@ -342,23 +275,6 @@ public class Settings {
   }
 
   /**
-   * Gets the user's nickname.
-   */
-  public String getOwnNick() {
-    return ownNick;
-  }
-
-  /**
-   * Sets the user's nickname.<br>
-   * A nickname cannot be longer than the nickname length limit. A longer nickname will be trimmed.
-   * 
-   * @param ownNick the new nickname of the user.
-   */
-  public void setOwnNick(String ownNick) {
-    this.ownNick = this.validateNick(ownNick, 1, this.nickLenLimit);
-  }
-
-  /**
    * Gets the host of the internal server.
    */
   public String getHost() {
@@ -423,230 +339,38 @@ public class Settings {
   }
 
   /**
-   * Sets all values of the Settings object to the default ones and generates a new key pair. <br>
-   * <br>
-   * Defaults:<br>
-   * <table>
-   * <tr>
-   * <th>Value</th>
-   * <th>Default</th>
-   * </tr>
-   * <td>{@code  msgLenLimit}</td>
-   * <td>{@code  4098}</td></tr>
-   * <tr>
-   * <td>{@code  headerLenLimit}</td>
-   * <td>{@code 256}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code nickLenLimit}</td>
-   * <td>{@code  64}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code sessionKeyLen}</td>
-   * <td> {@code 128}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code connectionTimeout}</td>
-   * <td>{@code 1000}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code gui}</td>
-   * <td> {@code false}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code debug}</td>
-   * <td>{@code false}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code exceptions}</td>
-   * <td> {@code false}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code color}</td>
-   * <td>{@code true}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code ownNick}</td>
-   * <td> {@code "MissingNo"}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code charSet}</td>
-   * <td>{@code "DEFAULT"}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code host}</td>
-   * <td>{@code "localhost"}</td>
-   * </tr>
-   * <tr>
-   * <td>{@code port}</td>
-   * <td>{@code 1337}</td>
-   * </tr>
-   * <table>
-   * <br>
-   * 
-   * @param save if set to true the changes will be saved.
+   * Gets the user's nickname.
    */
-  public void setToDefault(boolean save) {
-
-    for (FieldData fd : FieldData.getSaveableFields(Settings.class))
-      try {
-
-        fd.invoke(fd.getData().filePath() ? fd.getData().defVal().replace('/', File.separatorChar)
-            : fd.getData().defVal(), this);
-        
-      } catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
-          | InvocationTargetException | SecurityException e) {
-        Core.instance.printError(null, e, false);
-      }
-
-    if (save) {
-      this.save();
-    }
+  public String getOwnNick() {
+    return ownNick;
   }
 
   /**
-   * Saves the settings in a configuration file. If such a file does not exist it will be created.<br>
-   * <br>
+   * Sets the user's nickname.<br>
+   * A nickname cannot be longer than the nickname length limit. A longer nickname will be trimmed.
    * 
-   * This method tries to save a field (with {@link Data}-annotation) by invoking the corresponding
-   * <code>getter</code>-method. The default getter name will be created with the following syntax:
-   * 
-   * <pre>
-   * 'get' + field name
-   * </pre>
-   * 
-   * If you want to avoid the saving of a field you can use the <code>save</code> value of
-   * {@link Data}, If your field has a getter but it has a slightly different name as the default
-   * creation syntax you can specify it with the <code>getter</code> value of {@link Data}. This
-   * value has to be the exact name of the method (So it will not just replace
-   * <code>field name</code> in the creation syntax.) Also, a comment will be saved behind the value
-   * if <code>comment</code> is specified.<br>
-   * <code>final</code> fields wont be saved.
-   * 
-   * @see Data
+   * @param ownNick the new nickname of the user.
    */
-  public void save() {
+  public void setOwnNick(String ownNick) {
+    this.ownNick = this.validateNick(ownNick, 1, this.nickLenLimit);
+  }
 
-    try (BufferedWriter br = new BufferedWriter(new FileWriter(new File(fileLocation)))) {
-
-      // Write the date in the first line
-      br.write('#' + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM,
-          Locale.getDefault()).format(new Date()));
-
-      for (FieldData fd : FieldData.getSaveableFields(Settings.class)) {
-        try {
-          String value = Settings.class.getMethod(fd.getGetter()).invoke(this).toString();
-
-          br.write('\n' + fd.getSavedSpelling() + '=' + value + fd.getComment());
-
-        } catch (Exception e) {
-          Core.instance.printError("An Error occurred while saving \"" + fd.getField().getName() + "\"",
-              e, false);
-        }
-      }
-
-      br.write("\n");
+  /**
+   * Tests if the host is reachable.
+   * 
+   * @param host The host name to be validated.
+   * @return the host String itself or the preset host string if invalid.
+   */
+  protected String validateHost(final String host) {
+  
+    try {
+      if (InetAddress.getByName(host.toLowerCase()).isReachable(10000))
+        return host.toLowerCase();
     } catch (IOException e) {
       Core.instance.printError(null, e, false);
     }
-
-  }
-
-  /**
-   * Loads the configuration file. If one of the keys is unknown or the value couldn't be parsed the
-   * default settings will be loaded. If one of the values in invalid it will be replaced with the
-   * corresponding default value. If the file does not exist it will be created and the default
-   * values will be loaded.<br>
-   * <br>
-   * 
-   * This method tries to load a field (with {@link Data}-annotation) by invoking the corresponding
-   * <code>setter</code>-method. The default setter name will be created with the following syntax:
-   * 
-   * <pre>
-   * 'set' + field name
-   * </pre>
-   * 
-   * If you want to avoid the loading of a field you can use the <code>load</code> value of
-   * {@link Data}, If your field has a setter but it has a slightly different name as the default
-   * creation syntax you can specify it with the <code>setter</code> value of {@link Data}. This
-   * value has to be the exact name of the method (So it will not just replace
-   * <code>field name</code> in the creation syntax.)<br>
-   * <code>final</code> fields wont be loaded.
-   * 
-   * @see Data
-   */
-  public void load() {
-
-    this.setToDefault(false);
-
-    File file = new File(fileLocation);
-    if (!file.exists())
-      this.save();
-    else
-      try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-
-        String line;
-        while ((line = br.readLine()) != null) {
-
-          if (line.indexOf('#') != -1)
-            line = line.substring(0, line.indexOf('#'));
-          if (line.split("=").length == 2) {
-            line = line.trim();
-
-
-            try {
-              FieldData fd = FieldData.getBySavedSpelling(line.split("=")[0], Settings.class);
-
-              fd.invoke(line.split("=")[1], this);
-
-
-            } catch (NoSuchFieldException | NoSuchMethodException | SecurityException
-                | InvocationTargetException | IllegalAccessException e) {
-              Core.instance.printError("Couldn't load value:", e, false);
-            }
-          }
-        }
-
-      } catch (IOException e) {
-        Core.instance.printError(null, e, false);
-      }
-  }
-
-  /**
-   * Validates an integer.
-   * 
-   * @param i Integer to be validated
-   * @param min Minimal allowed value. ({@code >=})
-   * @param max Maximal allowed value. ({@code <=})
-   * @param ifInvalid Value that will be returned if the integer is invalid.
-   * @return The integer itself or the 'ifInvalid' value.
-   */
-  private int validateInt(int i, int min, int max, int ifInvalid) {
-    if (i >= min && i <= max)
-      return i;
-    else
-      try {
-        throw new FormatException("Integer '" + i + "' is too "
-            + ((i < min) ? "small (min: " + min : "big (max: " + max) + ").");
-      } catch (FormatException e) {
-        Core.instance.printError(null, e, false);
-      }
-
-    return ifInvalid;
-
-  }
-
-  private int validateInt(int i, int ifInvalid, int... possibilities) {
-    for (int j : possibilities)
-      if (i == j)
-        return i;
-    try {
-      throw new FormatException("Integer '" + i + "' isn't a valid possibility. (Possible values:"
-          + Arrays.toString(possibilities) + ")");
-    } catch (FormatException e) {
-      Core.instance.printError(null, e, false);
-    }
-    return ifInvalid;
+  
+    return this.host;
   }
 
   /**
@@ -659,7 +383,7 @@ public class Settings {
    *         shortened name if the name is too long.
    */
   private String validateNick(String nick, int minLen, int maxLen) {
-
+  
     if (nick.length() >= minLen && nick.length() <= maxLen) {
       return nick;
     }
@@ -671,7 +395,7 @@ public class Settings {
       }
       return "MissingNo";
     }
-
+  
     try {
       throw new FormatException("Nickname too long. (" + maxLen + " character"
           + ((maxLen == 1) ? "" : "s") + " maximum.)");
@@ -679,433 +403,7 @@ public class Settings {
       Core.instance.printError(null, e, false);
     }
     return nick.substring(0, maxLen);
-
-  }
-
-  /**
-   * Tests if the host is reachable.
-   * 
-   * @param host The host name to be validated.
-   * @return the host String itself or the preset host string if invalid.
-   */
-  private String validateHost(final String host) {
-
-    try {
-      if (InetAddress.getByName(host.toLowerCase()).isReachable(10000))
-        return host.toLowerCase();
-    } catch (IOException e) {
-      Core.instance.printError(null, e, false);
-    }
-
-    return this.host;
-  }
-
-  /**
-   * Equalises all values of this {@code Settings} object with the ones of another.
-   * 
-   * @param with The {@code Settings} object that is used as model.
-   */
-  public void equalise(Settings with) {
-
-    this.setHost(with.getHost());
-    this.setGuiMode(with.getGuiMode());
-    this.setHeaderLenLimit(with.getHeaderLenLimit());
-    this.setMsgLenLimit(with.getMsgLenLimit());
-    this.setOwnNick(with.getOwnNick());
-    this.setNickLenLimit(with.getNickLenLimit());
-    this.setPort(with.getPort());
-    this.setPrintExceptions(with.getPrintExceptions());
-    this.setSessionKeyLen(with.getSessionKeyLen());
-    this.setConnectionTimeout(with.getConnectionTimeout());
-    this.setDebugMode(with.getDebugMode());
-    this.setColorShown(with.getColorShown());
-
-  }
-
-  /**
-   * Placed over a field, this annotation will specify whether the field will be loaded or saved and
-   * can specify a comment behind the saved value. If the names of the getters and setters varies
-   * from the name of the field the <code>getter</code> and <code>setter</code> values can be used
-   * to specify them.<br>
-   * If <code>setter</code> isn't set but <code>getter</code> is, the <code>load</code>-method will
-   * generate it by switching the <code>s</code> with a <code>g</code>.<br>
-   * Default values:
-   * <ul>
-   * <li> <code>load</code>: <code>true</code>
-   * <li> <code>save</code>: <code>true</code>
-   * <li> <code>filePath</code>: <code>false</code>
-   * <li> <code>comment</code>: <code>""</code>
-   * <li> <code>getter</code>: <code>""</code>
-   * <li> <code>setter</code>: <code>""</code>
-   * </ul>
-   */
-  @Retention(RetentionPolicy.RUNTIME)
-  @Target(ElementType.FIELD)
-  private @interface Data {
-
-    /** The default value. */
-    String defVal();
-
-    /** Load this field. */
-    boolean load() default true;
-
-    /** Save this field. */
-    boolean save() default true;
-
-    /** The name of the setter-method of this field. */
-    String setter() default "";
-
-    /** The name of the getter-method of this field. */
-    String getter() default "";
-
-    /**
-     * Comment that will be written behind the saved field value.
-     */
-    String comment() default "";
-
-    /**
-     * Will be marked as file path. If field is are file path every <code>'/'</code> will be
-     * replaced by the default file system file separator.
-     */
-    boolean filePath() default false;
-  }
-
-  /**
-   * Represent a field that can be saved and/or loaded by a class.<br>
-   * Contains all important extra information of this field and is comparable
-   * (mostly for sorting purposes).<br>
-   * All extra information is defined by the {@link Data} annotation.
-   */
-  public static class FieldData implements Comparable<FieldData> {
-
-    /** Describing field. */
-    private Field field;
-
-    /** Name of field's getter. */
-    private String getter;
-    /** Name of field's setter. */
-    private String setter;
-    /** Additional comment of this field. */
-    private String comment;
-
-    /** Whether this field is accessible. */
-    private boolean accessible;
-    /** Whether this field can be loaded. */
-    private boolean loadable;
-    /** Whether this field can be saved. */
-    private boolean saveable;
-
-    /**
-     * Constructs a new FieldData with the Data annotation of the field
-     * as Data annotation.
-     * 
-     * @param field The field to use.
-     */
-    public FieldData(Field field) {
-      this(field, field.getDeclaredAnnotation(Data.class));
-    }
-
-    /**
-     * Constructs a new FieldData with a set field and Data annotation.
-     * 
-     * @param field The field to be used.
-     * @param data The Data annotation to be used.
-     */
-    public FieldData(Field field, Data data) {
-      this.field = field;
-
-      accessible = !Modifier.isFinal(field.getModifiers()) && data != null;
-
-      String fieldName =
-          Character.toUpperCase(field.getName().charAt(0))
-              + field.getName().substring(1, field.getName().length());
-
-      if (data != null) {
-        getter = data.getter();
-        setter = data.setter();
-        comment = ((!data.comment().isEmpty()) ? " #" + data.comment() : "");
-
-        if (getter.isEmpty())
-          getter = "get" + fieldName;
-        if (setter.isEmpty())
-          setter = "set" + fieldName;
-
-
-        loadable = data.load() && accessible;
-        saveable = data.save() && accessible;
-      } else {
-
-
-        getter = "get" + fieldName;
-        setter = "set" + fieldName;
-        comment = "";
-
-        loadable = accessible;
-        saveable = accessible;
-      }
-    }
-
-    /**
-     * @return the field of this FieldData.
-     */
-    public Field getField() {
-      return field;
-    }
-
-    /**
-     * @return the getter of this FieldData.
-     */
-    public String getGetter() {
-      return getter;
-    }
-
-    /**
-     * @return the setter of this FieldData.
-     */
-    public String getSetter() {
-      return setter;
-    }
-
-    /**
-     * @return the comment of this FieldData.
-     */
-    public String getComment() {
-      return comment;
-    }
-
-    /**
-     * @return the Data annotation of this FieldData.
-     */
-    public Data getData() {
-      return field.getDeclaredAnnotation(Data.class);
-    }
-
-    /**
-     * @return 
-     *  Whether this FiedData can be loaded.<br>
-     *  A field can be loaded if it's accessible and the Data annotation 
-     *  specifies that it can be loaded
-     *  
-     * @see FieldData#isAccessible()
-     */
-    public boolean isLoadable() {
-      return loadable;
-    }
-
-    /**
-     * @return 
-     *  Whether this FiedData can be saved.<br>
-     *  A field can be saved if it's accessible and the Data annotation 
-     *  specifies that it can be saved.
-     *  
-     * @see FieldData#isAccessible()
-     */
-    public boolean isSaveable() {
-      return saveable;
-    }
-
-    /**
-     * @return 
-     *  Whether this FiedData is accessible.<br>
-     *  A field is accessible if it has a Data annotation and isn't final.
-     */
-    public boolean isAccessible() {
-      return accessible;
-    }
-
-    /**
-     * Compares the names of the two FieldData objects.
-     */
-    @Override
-    public int compareTo(FieldData o) {
-      return this.field.getName().compareTo(o.field.getName());
-    }
-
-    /**
-     * Gets the saved spelling of the name of the field.<br>
-     * The name of the field is split with each camel case
-     * letter and the words are divided by dashes.<br>
-     * For example:
-     * <pre>
-     *  "programStatusWord"
-     * </pre>
-     * becomes
-     * <pre>
-     *  "program-status-word"
-     * </pre>
-     * 
-     * @return the saved spelling of this FieldData.
-     */
-    public String getSavedSpelling() {
-      String name = "", fieldName = field.getName();
-      for (char c : fieldName.toCharArray())
-        if (Character.toUpperCase(c) == c)
-          name += ("-" + c).toLowerCase();
-        else
-          name += c;
-      if (name.startsWith("-"))
-        name = name.substring(1, name.length());
-
-      return name;
-    }
-
-    /**
-     * Tries to set the value of the field to the value in a String.<br>
-     * The field <b>has to have</b> a setter method in order to
-     * successfully execute.<br>
-     *   
-     * @param value
-     *  Every value inside <code>value</code> will be interpreted as the
-     *  needed type.<br>
-     *  Supported types: <code>boolean, byte, int, long, {@link BigInteger}, 
-     *  float, double, {@link BigDecimal}, {@link String}</code>
-     * @param obj the object the setter will be invoked on.
-     * 
-     * @throws NoSuchMethodException
-     *  If the setter of this FieldData does not exists in the specified object's 
-     *  class.
-     * @throws IllegalAccessException
-     *  thrown by {@link Method#invoke(Object, Object...)}.
-     * @throws InvocationTargetException
-     *  thrown by {@link Method#invoke(Object, Object...)}.
-     * @throws SecurityException
-     *  thrown by {@link Method#invoke(Object, Object...)}.
-     * @throws IllegalArgumentException
-     *  If the type of <code>value</code> is unknown.
-     * @throws NumberFormatException
-     *  If <code>value</code> couldn't be converted to a number.
-     */
-    public void invoke(String value, Object obj) throws NoSuchMethodException,
-        IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-        SecurityException, NumberFormatException {
-
-      Class<?> paramType = null;
-
-      for (Method m : obj.getClass().getDeclaredMethods())
-        if (m.getName().equalsIgnoreCase(this.getSetter()) && m.getParameterTypes().length == 1)
-          paramType = m.getParameterTypes()[0];
-
-      if (paramType == null)
-        throw new NoSuchMethodException("Couldn't find setter (" + this.getSetter() + "): "
-            + this.getField().getName());
-
-
-
-      Object arg = null;
-
-      if (paramType == boolean.class)
-        arg = Boolean.parseBoolean(value);
-
-      else if (paramType == byte.class)
-        arg = Byte.parseByte(value);
-      else if (paramType == int.class)
-        arg = Integer.parseInt(value);
-      else if (paramType == long.class)
-        arg = Long.parseLong(value);
-      else if (paramType == BigInteger.class)
-        arg = new BigInteger(value);
-
-      else if (paramType == float.class)
-        arg = Float.parseFloat(value);
-      else if (paramType == double.class)
-        arg = Double.parseDouble(value);
-      else if (paramType == BigDecimal.class)
-        arg = new BigDecimal(value);
-      else if (paramType == String.class)
-        arg = value;
-
-      else
-        throw new IllegalArgumentException("Unknown Argument type (" + paramType.getName()
-            + ") for: " + setter + "()");
-
-
-      obj.getClass().getDeclaredMethod(setter, paramType).invoke(obj, arg);
-
-
-    }
-
-    /**
-     * Returns a sorted List of FieldData objects of all accessible fields in a class.<br>
-     * A field is accessible if it has a Data annotation and isn't final.
-     * 
-     * @param clazz the class from which the fields are taken.
-     * 
-     * @return a List of FieldData objects.
-     */
-    public static List<FieldData> getAccessibleFields(Class<? extends Object> clazz) {
-      ArrayList<FieldData> list = new ArrayList<FieldData>();
-
-      for (Field f : clazz.getDeclaredFields()) {
-        FieldData fd = new FieldData(f);
-        if (fd.isAccessible())
-          list.add(fd);
-      }
-      Collections.sort(list);
-      return list;
-    }
-
-    /**
-     * Returns a sorted List of FieldData objects of all fields that can be saved in a class.<br>
-     * A field can be saved if it's accessible and the Data annotation specifies that it can be 
-     * saved.
-     * 
-     * @param clazz the class from which the fields are taken.
-     * 
-     * @return a List of FieldData objects.
-     */
-    public static List<FieldData> getSaveableFields(Class<?> clazz) {
-      ArrayList<FieldData> list = new ArrayList<FieldData>();
-
-      for (Field f : clazz.getDeclaredFields()) {
-        FieldData fd = new FieldData(f);
-        if (fd.isSaveable())
-          list.add(fd);
-      }
-      Collections.sort(list);
-      return list;
-    }
-
-    /**
-     * Returns a sorted List of FieldData objects of all fields that can be loaded in a class.<br>
-     * A field can be loaded if it's accessible and the Data annotation specifies that it can be 
-     * loaded.
-     * 
-     * @param clazz the class from which the fields are taken.
-     * 
-     * @return a List of FieldData objects.
-     */
-    public static List<FieldData> getLoadableFields(Class<?> clazz) {
-      ArrayList<FieldData> list = new ArrayList<FieldData>();
-
-      for (Field f : clazz.getDeclaredFields()) {
-        FieldData fd = new FieldData(f);
-        if (fd.isLoadable())
-          list.add(fd);
-      }
-      Collections.sort(list);
-      return list;
-    }
-
-    /**
-     * Searches for a field with the given saved spelling in a class.
-     * 
-     * @param savedSpelling the saved spelling for which is searched for.
-     * @param clazz the class in which is searched for the field.
-     * 
-     * @return a fitting FieldData object.
-     * 
-     * @throws NoSuchFieldException
-     *  If no field with that saved spelling exists within the given class.
-     */
-    public static FieldData getBySavedSpelling(String savedSpelling, Class<?> clazz)
-        throws NoSuchFieldException {
-
-      List<FieldData> list = FieldData.getAccessibleFields(clazz);
-      for (FieldData fd : list)
-        if (fd.getSavedSpelling().equals(savedSpelling))
-          return fd;
-      throw new NoSuchFieldException("Field with save name '" + savedSpelling + "' is unknown.");
-    }
+  
   }
 
 }
