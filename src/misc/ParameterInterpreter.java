@@ -202,7 +202,7 @@ public class ParameterInterpreter {
    * @param c The Core object.
    * @param s The Settings Object used to overwrite its values.
    */
-  private static void initSettingsParameters(Core c, Settings s) {
+  private static void initSettingsParameters(Core c, ConfiguarionFile s) {
     
     for (FieldData fd :  FieldData.getAccessibleFields(Settings.class))
       parameters.add(new Parameter(fd.getSavedSpelling(), '\0', "Changes the corresponding setting.", 1, 1, false) {
@@ -284,7 +284,7 @@ public class ParameterInterpreter {
    * @param core The core object that has to accept the changes.
    * @param arguments The arguments of the program.
    */
-  public static Settings interpretCommandLine(Core core, String[] arguments) {
+  public static ConfiguarionFile interpretCommandLine(Core core, String[] arguments) {
 
     Settings s = new Settings();
 
