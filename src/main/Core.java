@@ -70,6 +70,14 @@ public class Core {
 
 
     settings = new Settings();
+    
+    System.out.println(settings.getPort());
+    
+    settings.save();
+    
+    user = new User();
+    
+    user.save();
 
 
 
@@ -228,8 +236,8 @@ public class Core {
       Core.getInstance().getUserInterface()
           .printError("[Server] Couldn't stop internal server!", e);
     }
-
-    settings.save();
+    if (settings != null)
+      settings.save();
 
     System.exit(status);
 

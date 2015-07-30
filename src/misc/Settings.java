@@ -1,11 +1,6 @@
 package misc;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
-
-import exceptions.FormatException;
-import main.Core;
 
 /**
  * A Settings object that will contain the settings of the program.<br>
@@ -70,13 +65,7 @@ public class Settings extends ConfiguarionFile {
   /** The boolean that determines if colors will be shown. */
   @Data(defaultValue = "true", getter = "getColorShown", setter = "setColorShown")
   private boolean color = true;
-
-  /** The nickname of the user. */
-  @Data(defaultValue = "MissingNo") 
-  private String ownNick = null;
   
-  @Data(defaultValue = "localhost", load = false, comment = "Currrently unused.") 
-  private String host = null;
   /**
    * The port of the internal server.
    */
@@ -275,22 +264,6 @@ public class Settings extends ConfiguarionFile {
   }
 
   /**
-   * Gets the host of the internal server.
-   */
-  public String getHost() {
-    return host;
-  }
-
-  /**
-   * Sets the host of the internal server. should be a IP or {@code "localhost"}.
-   * 
-   * @param host The host to be set.
-   */
-  public void setHost(String host) {
-    this.host = validateHost(host);
-  }
-
-  /**
    * Gets the port the internal server will be using.
    */
   public int getPort() {
@@ -336,74 +309,6 @@ public class Settings extends ConfiguarionFile {
           + ") is no file or not readable/writable.");
     }
     dbLocation = newLocation;
-  }
-
-  /**
-   * Gets the user's nickname.
-   */
-  public String getOwnNick() {
-    return ownNick;
-  }
-
-  /**
-   * Sets the user's nickname.<br>
-   * A nickname cannot be longer than the nickname length limit. A longer nickname will be trimmed.
-   * 
-   * @param ownNick the new nickname of the user.
-   */
-  public void setOwnNick(String ownNick) {
-    this.ownNick = this.validateNick(ownNick, 1, this.nickLenLimit);
-  }
-
-  /**
-   * Tests if the host is reachable.
-   * 
-   * @param host The host name to be validated.
-   * @return the host String itself or the preset host string if invalid.
-   */
-  protected String validateHost(final String host) {
-  
-    try {
-      if (InetAddress.getByName(host.toLowerCase()).isReachable(10000))
-        return host.toLowerCase();
-    } catch (IOException e) {
-      Core.instance.printError(null, e, false);
-    }
-  
-    return this.host;
-  }
-
-  /**
-   * Validates a nickname.
-   * 
-   * @param nick The nickname to be validated.
-   * @param minLen The minimal allowed length of the nickname in characters. (>=)
-   * @param maxLen The maximal allowed length of the nickname in characters. (>=)
-   * @return the nickname itself if it's valid, {@code "MissingNo"} if the name is too short and a
-   *         shortened name if the name is too long.
-   */
-  private String validateNick(String nick, int minLen, int maxLen) {
-  
-    if (nick.length() >= minLen && nick.length() <= maxLen) {
-      return nick;
-    }
-    if (nick.length() < minLen) {
-      try {
-        throw new FormatException("Nickname too short. (1 character minimum.)");
-      } catch (FormatException e) {
-        Core.instance.printError(null, e, false);
-      }
-      return "MissingNo";
-    }
-  
-    try {
-      throw new FormatException("Nickname too long. (" + maxLen + " character"
-          + ((maxLen == 1) ? "" : "s") + " maximum.)");
-    } catch (FormatException e) {
-      Core.instance.printError(null, e, false);
-    }
-    return nick.substring(0, maxLen);
-  
   }
 
 }

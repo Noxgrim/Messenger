@@ -1,27 +1,53 @@
 package persons;
 
-public class User {
-  private String publicKey;
-  private String privateKey;
+import java.lang.reflect.Field;
+import java.util.UUID;
 
-  private String nickname;
-  private String uuid;
+import main.Core;
+import misc.ConfiguarionFile;
+import utils.HybridCoder;
+import exceptions.FormatException;
+
+public class User extends ConfiguarionFile {
+  
+  @Data(defaultValue = "")
+  private String publicKey = null;
+  @Data(defaultValue = "")
+  private String privateKey = null;
+
+  @Data(defaultValue = "MissingNo")
+  private String nickname = null;
+  @Data(defaultValue = "")
+  private String uuid = null;
 
   public User() {
-    load();
+    super("load", "data/user.conf");
   }
-
-  public User(String nickname, String uuid, String publicKey, String privateKey) {
-    this.nickname = nickname;
-    this.uuid = uuid;
-    this.privateKey = privateKey;
-    this.publicKey = publicKey;
-  }
-
-  private void load() {
-    if (nickname.lastIndexOf(0) == 1) {
-      // TODO Load user's data from Database
+  
+  @Override
+  public void setToDefault(boolean save) {
+    super.setToDefault(save);
+    
+    Class<? extends User> clazz = this.getClass();
+    
+    try {
+      
+      String[] keys = HybridCoder.generateKeyPair();
+      
+      Field field = clazz.getDeclaredField("publicKey");
+      field.set(this, keys[1]);
+      
+      field = clazz.getDeclaredField("privateKey");
+      field.set(this, keys[0]);
+      
+      field = clazz.getDeclaredField("uuid");
+      field.set(this, UUID.randomUUID().toString());
+    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+      e.printStackTrace();
     }
+    
+    if (save)
+      save();
   }
 
 
@@ -40,5 +66,56 @@ public class User {
 
   public String getPublicKey() {
     return publicKey;
+  }
+  
+  public void setUuid(String uuid) {
+    this.uuid = uuid;
+  }
+  
+  public void setNickname(String nickname) {
+    this.nickname = validateNick(nickname, 1, 
+        Core.instance.getSettings().getNickLenLimit());
+  }
+  
+  public void setPrivateKey(String privateKey) {
+    this.privateKey = privateKey;
+  }
+  
+  public void setPublicKey(String publicKey) {
+    this.publicKey = publicKey;
+  }
+
+  /**
+   * Validates a nickname.
+   * 
+   * @param nick The nickname to be validated.
+   * @param minLen The minimal allowed length of the nickname in characters. (>=)
+   * @param maxLen The maximal allowed length of the nickname in characters. (>=)
+   * @return the nickname itself if it's valid, {@code "MissingNo"} if the name is too short and a
+   *         shortened name if the name is too long.
+   */
+  private String validateNick(String nick, int minLen, int maxLen) {
+  
+    if (nick.length() >= minLen && nick.length() <= maxLen) {
+      return nick;
+    }
+    if (nick.length() < minLen) {
+      try {
+        throw new FormatException("Nickname too short. (" + minLen + " character" + 
+      ((maxLen == 1) ? "" : "s") + " minimum.)");
+      } catch (FormatException e) {
+        Core.instance.printError(null, e, false);
+      }
+      return "MissingNo";
+    }
+  
+    try {
+      throw new FormatException("Nickname too long. (" + maxLen + " character"
+          + ((maxLen == 1) ? "" : "s") + " maximum.)");
+    } catch (FormatException e) {
+      Core.instance.printError(null, e, false);
+    }
+    return nick.substring(0, maxLen);
+  
   }
 }
