@@ -42,6 +42,7 @@ import exchange.Message;
  * @author G.
  */
 public class Database implements AutoCloseable {
+  static { assert_constants(); }
 //public
   /**
    * Connects to the database.
@@ -76,7 +77,6 @@ public class Database implements AutoCloseable {
     } catch (SQLException e) {
       throw new DBException("Couldn't connect to the database.\n", e);
     }
-    assert_constants();
     check_connection();
   }
   
@@ -137,7 +137,8 @@ public class Database implements AutoCloseable {
    *   If <code>numberOfMessages</code> <= 0
    * @throws DBException
    */
-  public List<Message> getLastNMessages(int maxNumberOfMessages, boolean onlyUnsent) throws DBException {
+  public List<Message> getLastNMessages(int maxNumberOfMessages, boolean onlyUnsent)
+      throws DBException {
     return _getLastNMessages(null, null, 0, Long.MAX_VALUE, maxNumberOfMessages, onlyUnsent);    
   }
   
@@ -597,7 +598,7 @@ public class Database implements AutoCloseable {
    * @throws DBException
    * 
    * Has to suppress "unchecked" because it tries to cast a deserialized Object to a
-   * <code>List&lt;String&gt;</code>. (I assert that the object is valid beforehand.)
+   * <code>List&lt;String&gt;</code>. (I make sure that the object is valid beforehand.)
    */
   @SuppressWarnings("unchecked")
   public List<Conversation> getConversations() throws DBException {
@@ -612,13 +613,17 @@ public class Database implements AutoCloseable {
         String uuid = EscapedString.unescape(rs.getString("uuid"));
         boolean host = rs.getInt("host") == 0 ? false : true;
         if (host) {
-          Object participants_uuids_obj = getObjFromSerializedBlob(rs.getBlob("participants_uuids"));
+          Object participants_uuids_obj = getObjFromSerializedBlob(
+              rs.getBlob("participants_uuids"));
           LinkedList<String> participants_uuids;
           if (participants_uuids_obj instanceof LinkedList<?>) {
             for (Object o : (LinkedList<?>)participants_uuids_obj)
-              assert o instanceof String: "Fatal error while reading the database: UUID not a string";
+              if (!(o instanceof String))
+                throw new IllegalStateException(
+                    "Fatal error while reading the database: UUID not a string");
           } else {
-            throw new AssertionError("Blob participants_uuids does not represent a LinkedList");
+            throw new IllegalStateException(
+                "Blob participants_uuids does not represent a LinkedList");
           }
           participants_uuids = (LinkedList<String>)participants_uuids_obj;
           results.add(new HostConversation(uuid, name, participants_uuids));
@@ -649,9 +654,8 @@ public class Database implements AutoCloseable {
       ResultSet rs = stmt.executeQuery(sql);
       int count = 0;
       while(rs.next()) {
-        ++count;
-        assert count == 1: "Fatal error: UUID found more than once in database."
-                           +"(getConversation(String))"; 
+        if (++count != 1) 
+          throw new IllegalStateException("Fatal error: UUID found more than once in database.");
         String name = EscapedString.unescape(rs.getString("name"));
         String uuid = EscapedString.unescape(rs.getString("uuid"));
         boolean host = rs.getInt("host") == 0 ? false : true;
@@ -731,11 +735,13 @@ public class Database implements AutoCloseable {
   }
   
   /** used to check whether the constants are valid*/
-  private void assert_constants() {
-    assert MESSAGES_TABLE != null && !MESSAGES_TABLE.isEmpty() && !MESSAGES_TABLE.contains("'");
-    assert CONTACTS_TABLE != null && !CONTACTS_TABLE.isEmpty() && !CONTACTS_TABLE.contains("'");
-    assert CONVERSATIONS_TABLE != null && !CONVERSATIONS_TABLE.isEmpty() 
-        && !CONVERSATIONS_TABLE.contains("'");
+  private static void assert_constants() {
+    if (MESSAGES_TABLE == null || MESSAGES_TABLE.isEmpty() || MESSAGES_TABLE.contains("'") ||
+        CONTACTS_TABLE == null || CONTACTS_TABLE.isEmpty() || CONTACTS_TABLE.contains("'") ||
+        CONVERSATIONS_TABLE == null || CONVERSATIONS_TABLE.isEmpty() || 
+        CONVERSATIONS_TABLE.contains("'")) {
+      throw new IllegalStateException("Illegal constants in Database class");
+    }
   }
   
   private void check_connection() throws DBException {
@@ -783,15 +789,18 @@ public class Database implements AutoCloseable {
   }
   
   private int getId(EscapedString uuid, String table) throws SQLException {
-    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE || 
-        table == CONVERSATIONS_TABLE : "Trying to get ID of "
-        +uuid.getUnescaped()+" in a nonexistant table: "+table;
+    if (! (table == MESSAGES_TABLE || table == CONTACTS_TABLE || 
+        table == CONVERSATIONS_TABLE) )
+        throw new IllegalStateException("Trying to get ID of "+uuid.getUnescaped()+
+            " in a nonexistent table: "+table);
     try (Statement stmt = conn.createStatement();) {
       ResultSet rs = stmt.executeQuery("SELECT id FROM "+table+" WHERE uuid = "
           +uuid.toQuotedString() + ";");
       if (rs.next()) {
         int ret = rs.getInt("id");
-        assert !rs.next() : "UUID contained more than once in database: "+uuid.getUnescaped();
+        if (rs.next())
+          throw new IllegalStateException("UUID contained more than once in database: "
+              +uuid.getUnescaped());
         return ret;
       } else {
         throw new SQLException("UUID does not exist in "+table+": "+uuid.getUnescaped());
@@ -816,9 +825,10 @@ public class Database implements AutoCloseable {
   }
   
   private String getUuid(int id, String table) throws SQLException {
-    assert table == MESSAGES_TABLE || table == CONTACTS_TABLE ||
-        table == CONVERSATIONS_TABLE : "Trying to get UUID of "
-        +id+" in a nonexistant table: "+table;
+    if (! (table == MESSAGES_TABLE || table == CONTACTS_TABLE || 
+        table == CONVERSATIONS_TABLE) )
+        throw new IllegalStateException("Trying to get UUID of "+id+
+            " in a nonexistent table: "+table);
     try (Statement stmt = conn.createStatement();) {
       ResultSet rs = stmt.executeQuery("SLECT uuid FROM "+table+" WHERE id = "+id+";");
       if (rs.next()) return EscapedString.unescape(rs.getString("uuid"));
@@ -869,7 +879,8 @@ public class Database implements AutoCloseable {
         condition.append("sent > 0");
       }
       
-      if (condition.substring(condition.length() - " AND ".length(), condition.length()) == " AND ") {
+      if (condition.substring(condition.length() - " AND ".length(),
+          condition.length()) == " AND ") {
         condition.delete(condition.length() - " AND ".length(), condition.length());
       }
       
@@ -886,7 +897,9 @@ public class Database implements AutoCloseable {
         int sent = rs.getInt("sent");
         int id = rs.getInt("id");
         long timestamp = rs.getLong("timestamp");
-        assert sent >= 0: "Fatal error: sent_int must be bigger than 0, but is "+sent;
+        if (! (sent >= 0) )
+          throw new IllegalStateException("Fatal error: sent_int must be bigger than 0, but is "
+              +sent);
         results.add(new InternalMessage(content, getConversationUuid(conversation_id),
             getContactUuid(sender_id), timestamp, id, sent));
       }
