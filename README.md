@@ -1,3 +1,6 @@
+ # (Abandoned)
+ This project will most probably not be developed further.
+ 
  A little project of two students.
  It's our first "big" project so please excuse design and/or coding flaws.
  
